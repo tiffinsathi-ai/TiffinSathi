@@ -8,6 +8,7 @@ public class TiffinSathiApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(TiffinSathiApplication.class, args);
+        System.out.println("hello world");
 	}
 
 }
