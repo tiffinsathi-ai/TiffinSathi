@@ -16,18 +16,21 @@ public class User {
     private String email;
 
     @Column(nullable = false)
-    private String password; // Should be stored as a HASH!
+    private String password;
 
     private String firstName;
     private String lastName;
 
     private String phoneNumber;
 
-    private String address; // Primary address for delivery
+    // ✅ Profile Picture (Stored as binary)
+    @Lob
+    @Column(columnDefinition = "LONGBLOB")
+    private byte[] profilePicture;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Role role = Role.USER; // Default role is USER
+    private Role role = Role.USER;
 
 	public Long getId() {
 		return id;
@@ -77,13 +80,6 @@ public class User {
 		this.phoneNumber = phoneNumber;
 	}
 
-	public String getAddress() {
-		return address;
-	}
-
-	public void setAddress(String address) {
-		this.address = address;
-	}
 
 	public Role getRole() {
 		return role;
@@ -92,12 +88,5 @@ public class User {
 	public void setRole(Role role) {
 		this.role = role;
 	}
-
-//    // Relationships
-//    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-//    private List<Subscription> subscriptions;
-//
-//    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-//    private List<Order> oneTimeOrders;
     
 }
