@@ -1,12 +1,23 @@
 package com.tiffin_sathi.model;
 
 import jakarta.persistence.*;
-import lombok.Data; // Using Lombok for clean getters/setters/constructors (highly recommen]
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
-@Data // Generates getters, setters, toString, equals, and hashCode
-public class User {
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class User implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -20,10 +31,8 @@ public class User {
 
     private String firstName;
     private String lastName;
-
     private String phoneNumber;
 
-    // ✅ Profile Picture (Stored as binary)
     @Lob
     @Column(columnDefinition = "LONGBLOB")
     private byte[] profilePicture;
@@ -32,61 +41,45 @@ public class User {
     @Column(nullable = false)
     private Role role = Role.USER;
 
-	public Long getId() {
-		return id;
-	}
+    @CreationTimestamp
+    @Column(updatable = false, name = "created_at")
+    private LocalDateTime createdAt;
 
-	public void setId(Long id) {
-		this.id = id;
-	}
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
-	public String getEmail() {
-		return email;
-	}
+    // ✅ --- Implementation of UserDetails interface methods ---
 
-	public void setEmail(String email) {
-		this.email = email;
-	}
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        // Map user role to a GrantedAuthority
+        return List.of(() -> "ROLE_" + role.name());
+    }
 
-	public String getPassword() {
-		return password;
-	}
+    @Override
+    public String getUsername() {
+        // Use email as the username
+        return email;
+    }
 
-	public void setPassword(String password) {
-		this.password = password;
-	}
+    @Override
+    public boolean isAccountNonExpired() {
+        return true; // You can customize with an "accountExpired" field later
+    }
 
-	public String getFirstName() {
-		return firstName;
-	}
+    @Override
+    public boolean isAccountNonLocked() {
+        return true; // You can customize with an "accountLocked" field later
+    }
 
-	public void setFirstName(String firstName) {
-		this.firstName = firstName;
-	}
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true; // You can customize with a "credentialsExpired" field
+    }
 
-	public String getLastName() {
-		return lastName;
-	}
-
-	public void setLastName(String lastName) {
-		this.lastName = lastName;
-	}
-
-	public String getPhoneNumber() {
-		return phoneNumber;
-	}
-
-	public void setPhoneNumber(String phoneNumber) {
-		this.phoneNumber = phoneNumber;
-	}
-
-
-	public Role getRole() {
-		return role;
-	}
-
-	public void setRole(Role role) {
-		this.role = role;
-	}
-    
+    @Override
+    public boolean isEnabled() {
+        return true; // You can add a "boolean active" field to control this
+    }
 }
