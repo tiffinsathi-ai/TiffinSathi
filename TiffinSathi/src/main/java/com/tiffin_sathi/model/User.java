@@ -17,26 +17,31 @@ public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    
+    private String userName;
 
     @Column(unique = true, nullable = false)
     private String email;
 
     @Column(nullable = false)
     private String password;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role = Role.USER;
 
-    private String firstName;
-    private String lastName;
-    private String fullName;
+
     private String phoneNumber;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Status status = Status.ACTIVE;
 
     @Lob
     @Column(columnDefinition = "LONGBLOB")
     private byte[] profilePicture;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Role role = Role.USER;
-
+   
     @CreationTimestamp
     @Column(updatable = false, name = "created_at")
     private LocalDateTime createdAt;
@@ -49,15 +54,45 @@ public class User implements UserDetails {
     // Constructors
     // ------------------------
 
-    public User() { }
 
-    public User(String email, String password, String firstName, String lastName, String fullName, Role role) {
-        this.email = email;
-        this.password = password;
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.fullName = fullName;
-        this.role = role;
+    public User() {
+    this.email = email;
+    this.password = password;
+    this.userName = userName;
+    this.role = role != null ? role : Role.USER;        // default if null
+    this.phoneNumber = phoneNumber;
+    this.status = status != null ? status : Status.ACTIVE; // default if null
+    this.profilePicture = profilePicture;
+}
+	@Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of();
+    }
+
+
+    @Override
+    public String getUsername() {
+        return email;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
     }
 
     // ------------------------
@@ -80,40 +115,24 @@ public class User implements UserDetails {
         this.email = email;
     }
 
-    @Override
-    public String getPassword() {
-        return password;
-    }
-
     public void setPassword(String password) {
         this.password = password;
     }
 
-    public String getFirstName() {
-        return firstName;
-    }
+    public String getPassword() {
+		return password;
+	}
 
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
-    }
 
-    public String getLastName() {
-        return lastName;
-    }
+    public String getUserName() {
+		return userName;
+	}
 
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
-    }
+	public void setUserName(String userName) {
+		this.userName = userName;
+	}
 
-    public String getFullName() {
-        return fullName;
-    }
-
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
-    public String getPhoneNumber() {
+	public String getPhoneNumber() {
         return phoneNumber;
     }
 
@@ -153,37 +172,17 @@ public class User implements UserDetails {
         this.updatedAt = updatedAt;
     }
 
-    // ------------------------
-    // UserDetails interface
-    // ------------------------
+	public Status getStatus() {
+		return status;
+	}
 
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(() -> "ROLE_" + role.name());
-    }
+	public void setStatus(Status status) {
+		this.status = status;
+	}
 
-    @Override
-    public String getUsername() {
-        return email;
-    }
+	
 
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
+	
 
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return true;
-    }
+ 
 }

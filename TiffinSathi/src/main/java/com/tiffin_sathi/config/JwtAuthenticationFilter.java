@@ -1,6 +1,5 @@
 package com.tiffin_sathi.config;
 
-import com.tiffin_sathi.services.JwtServices;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,17 +15,19 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
+import com.tiffin_sathi.services.JwtService;
+
 import java.io.IOException;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final HandlerExceptionResolver handlerExceptionResolver;
 
-    private final JwtServices jwtService;
+    private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
 
     public JwtAuthenticationFilter(
-        JwtServices jwtService,
+        JwtService jwtService,
         UserDetailsService userDetailsService,
         HandlerExceptionResolver handlerExceptionResolver
     ) {

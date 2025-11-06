@@ -1,44 +1,41 @@
 package com.tiffin_sathi.controller;
 
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.tiffin_sathi.dtos.LoginUserDto;
-import com.tiffin_sathi.dtos.RegisterUserDto;
+import com.tiffin_sathi.dtos.JwtResponse;
+import com.tiffin_sathi.dtos.LoginRequest;
+import com.tiffin_sathi.dtos.SignupRequest;
 import com.tiffin_sathi.model.User;
 import com.tiffin_sathi.services.AuthenticationService;
-import com.tiffin_sathi.services.JwtServices;
-import com.tiifin_sathi.response.LoginResponse;
+import com.tiffin_sathi.services.JwtService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-@RequestMapping("/auth")
 @RestController
+@RequestMapping("/auth")
 public class AuthenticationController {
-    private final JwtServices jwtService;
-    
+
+    private final JwtService jwtService;
     private final AuthenticationService authenticationService;
 
-    public AuthenticationController(JwtServices jwtService, AuthenticationService authenticationService) {
+    public AuthenticationController(JwtService jwtService, AuthenticationService authenticationService) {
         this.jwtService = jwtService;
         this.authenticationService = authenticationService;
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<User> register(@RequestBody RegisterUserDto registerUserDto) {
+    public ResponseEntity<User> register(@RequestBody SignupRequest registerUserDto) {
         User registeredUser = authenticationService.signup(registerUserDto);
-
         return ResponseEntity.ok(registeredUser);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> authenticate(@RequestBody LoginUserDto loginUserDto) {
+    public ResponseEntity<JwtResponse> authenticate(@RequestBody LoginRequest loginUserDto) {
         User authenticatedUser = authenticationService.authenticate(loginUserDto);
 
+        // Generate JWT token
         String jwtToken = jwtService.generateToken(authenticatedUser);
 
-        LoginResponse loginResponse = new LoginResponse().setToken(jwtToken).setExpiresIn(jwtService.getExpirationTime());
+        // Create response using record constructor
+        JwtResponse loginResponse = new JwtResponse(jwtToken, jwtService.getExpirationTime());
 
         return ResponseEntity.ok(loginResponse);
     }
