@@ -3,7 +3,9 @@ package com.tiffin_sathi.controller;
 import com.tiffin_sathi.dtos.JwtResponse;
 import com.tiffin_sathi.dtos.LoginRequest;
 import com.tiffin_sathi.dtos.SignupRequest;
+import com.tiffin_sathi.dtos.VendorSignupRequest;
 import com.tiffin_sathi.model.User;
+import com.tiffin_sathi.model.Vendor;
 import com.tiffin_sathi.services.AuthenticationService;
 import com.tiffin_sathi.services.JwtService;
 import org.springframework.http.ResponseEntity;
@@ -21,22 +23,45 @@ public class AuthenticationController {
         this.authenticationService = authenticationService;
     }
 
-    @PostMapping("/signup")
-    public ResponseEntity<User> register(@RequestBody SignupRequest registerUserDto) {
-        User registeredUser = authenticationService.signup(registerUserDto);
+    // -------- User Signup --------
+    @PostMapping("/signup/user")
+    public ResponseEntity<User> registerUser(@RequestBody SignupRequest signupRequest) {
+        User registeredUser = authenticationService.signupUser(signupRequest);
         return ResponseEntity.ok(registeredUser);
     }
 
+    // -------- Vendor Signup --------
+    @PostMapping("/signup/vendor")
+    public ResponseEntity<Vendor> registerVendor(@RequestBody VendorSignupRequest vendorSignupRequest) {
+        Vendor registeredVendor = authenticationService.signupVendor(vendorSignupRequest);
+        return ResponseEntity.ok(registeredVendor);
+    }
+
+    // -------- Login (User or Vendor) --------
     @PostMapping("/login")
-    public ResponseEntity<JwtResponse> authenticate(@RequestBody LoginRequest loginUserDto) {
-        User authenticatedUser = authenticationService.authenticate(loginUserDto);
+    public ResponseEntity<JwtResponse> authenticate(@RequestBody LoginRequest loginRequest) {
+        Object authResult = authenticationService.authenticate(loginRequest);
 
-        // Generate JWT token
-        String jwtToken = jwtService.generateToken(authenticatedUser);
+        String accessToken;
+        String refreshToken;
 
-        // Create response using record constructor
-        JwtResponse loginResponse = new JwtResponse(jwtToken, jwtService.getExpirationTime());
+        if (authResult instanceof User user) {
+            accessToken = jwtService.generateToken(user);
+            refreshToken = jwtService.generateRefreshToken(user);
+        } else if (authResult instanceof Vendor vendor) {
+            accessToken = jwtService.generateToken(vendor);
+            refreshToken = jwtService.generateRefreshToken(vendor);
+        } else {
+            throw new RuntimeException("Authentication failed");
+        }
 
-        return ResponseEntity.ok(loginResponse);
+        JwtResponse response = new JwtResponse(
+                accessToken,
+                jwtService.getJwtExpiration(),
+                refreshToken,
+                jwtService.getRefreshExpiration()
+        );
+
+        return ResponseEntity.ok(response);
     }
 }

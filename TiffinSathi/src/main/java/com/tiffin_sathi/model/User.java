@@ -56,6 +56,7 @@ public class User implements UserDetails {
 
 
     public User() {
+    	
     this.email = email;
     this.password = password;
     this.userName = userName;
@@ -63,7 +64,8 @@ public class User implements UserDetails {
     this.phoneNumber = phoneNumber;
     this.status = status != null ? status : Status.ACTIVE; // default if null
     this.profilePicture = profilePicture;
-}
+    
+    }
 	@Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of();

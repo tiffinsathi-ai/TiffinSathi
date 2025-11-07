@@ -1,14 +1,11 @@
 package com.tiffin_sathi.services;
 
-
 import com.tiffin_sathi.dtos.LoginRequest;
 import com.tiffin_sathi.dtos.SignupRequest;
-import com.tiffin_sathi.model.Role;
-import com.tiffin_sathi.model.Status;
-import com.tiffin_sathi.model.User;
+import com.tiffin_sathi.dtos.VendorSignupRequest;
+import com.tiffin_sathi.model.*;
 import com.tiffin_sathi.repository.UserRepository;
-
-
+import com.tiffin_sathi.repository.VendorRepository;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,18 +15,22 @@ import org.springframework.stereotype.Service;
 public class AuthenticationService {
 
     private final UserRepository userRepository;
+    private final VendorRepository vendorRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
 
     public AuthenticationService(UserRepository userRepository,
-                       AuthenticationManager authenticationManager,
-                       PasswordEncoder passwordEncoder) {
+                                 VendorRepository vendorRepository,
+                                 AuthenticationManager authenticationManager,
+                                 PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.vendorRepository = vendorRepository;
         this.authenticationManager = authenticationManager;
         this.passwordEncoder = passwordEncoder;
     }
 
-    public User signup(SignupRequest input) {
+    // -------- Signup for normal user --------
+    public User signupUser(SignupRequest input) {
         if (userRepository.existsByEmail(input.email())) {
             throw new RuntimeException("Email already in use");
         }
@@ -39,15 +40,50 @@ public class AuthenticationService {
         user.setEmail(input.email());
         user.setPassword(passwordEncoder.encode(input.password()));
         user.setPhoneNumber(input.phoneNumber());
-        user.setRole(Role.USER);       // default
-        user.setStatus(Status.ACTIVE); // default
-        user.setProfilePicture(input.profilePicture()); // optional, can be null
+        user.setRole(Role.USER);
+        user.setStatus(Status.ACTIVE);
+        user.setProfilePicture(input.profilePicture());
 
-        // JPA will automatically populate createdAt and updatedAt
         return userRepository.save(user);
     }
 
-    public User authenticate(LoginRequest input) {
+    // -------- Signup for vendor --------
+    public Vendor signupVendor(VendorSignupRequest input) {
+        if (vendorRepository.findByBusinessEmail(input.getEmail()).isPresent()) {
+            throw new RuntimeException("Business email already in use");
+        }
+
+        Vendor vendor = new Vendor();
+        vendor.setOwnerName(input.getUserName());
+        vendor.setBusinessName(input.getBusinessName());
+        vendor.setBusinessEmail(input.getEmail());
+        vendor.setPhone(input.getPhoneNumber());
+        vendor.setPassword(passwordEncoder.encode(input.getPassword()));
+        vendor.setRole(Role.VENDOR);
+        vendor.setStatus(VendorStatus.PENDING); // pending approval
+
+        // Optional fields
+        vendor.setBusinessAddress(input.getBusinessAddress());
+        vendor.setAlternatePhone(input.getAlternatePhone());
+        vendor.setCuisineType(input.getCuisineType());
+        vendor.setCapacity(input.getCapacity());
+        vendor.setDescription(input.getDescription());
+        vendor.setBankName(input.getBankName());
+        vendor.setAccountNumber(input.getAccountNumber());
+        vendor.setBranchName(input.getBranchName());
+        vendor.setAccountHolderName(input.getAccountHolderName());
+        vendor.setPanNumber(input.getPanNumber());
+        vendor.setVatNumber(input.getVatNumber());
+        vendor.setFoodLicenseNumber(input.getFoodLicenseNumber());
+        vendor.setCompanyRegistrationNumber(input.getCompanyRegistrationNumber());
+        vendor.setLicenseDocument(input.getLicenseDocument());
+
+        return vendorRepository.save(vendor);
+    }
+
+    // -------- Authenticate both User and Vendor --------
+    public Object authenticate(LoginRequest input) {
+        // Perform authentication
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         input.email(),
@@ -55,13 +91,24 @@ public class AuthenticationService {
                 )
         );
 
-        User user = userRepository.findByEmail(input.email())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (user.getStatus() != Status.ACTIVE) {
-            throw new RuntimeException("User account is not active");
+        // Try finding user
+        User user = userRepository.findByEmail(input.email()).orElse(null);
+        if (user != null) {
+            if (user.getStatus() != Status.ACTIVE) {
+                throw new RuntimeException("User account is not active");
+            }
+            return user;
         }
 
-        return user;
+        // Try finding vendor
+        Vendor vendor = vendorRepository.findByBusinessEmail(input.email()).orElse(null);
+        if (vendor != null) {
+            if (vendor.getStatus() != VendorStatus.APPROVED) {
+                throw new RuntimeException("Vendor account is not approved");
+            }
+            return vendor;
+        }
+
+        throw new RuntimeException("User or Vendor not found");
     }
 }
