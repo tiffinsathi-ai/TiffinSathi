@@ -31,7 +31,7 @@ public class AuthenticationService {
 
     // -------- Signup for normal user --------
     public User signupUser(SignupRequest input) {
-        if (userRepository.existsByEmail(input.email())) {
+        if (userRepository.existsByEmail(input.email()) && vendorRepository.findByBusinessEmail(input.email()).isPresent()) {
             throw new RuntimeException("Email already in use");
         }
 
@@ -49,7 +49,7 @@ public class AuthenticationService {
 
     // -------- Signup for vendor --------
     public Vendor signupVendor(VendorSignupRequest input) {
-        if (vendorRepository.findByBusinessEmail(input.getEmail()).isPresent()) {
+        if (vendorRepository.findByBusinessEmail(input.getEmail()).isPresent() && userRepository.existsByEmail(input.getEmail())) {
             throw new RuntimeException("Business email already in use");
         }
 

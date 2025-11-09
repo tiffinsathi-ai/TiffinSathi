@@ -7,11 +7,23 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.JwtException;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+
+import com.tiffin_sathi.model.User;
+import com.tiffin_sathi.model.Vendor;
+import com.tiffin_sathi.repository.UserRepository;
+import com.tiffin_sathi.repository.VendorRepository;
+
 import java.security.Key;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -28,6 +40,19 @@ public class JwtService {
 
     @Value("${security.jwt.refresh-expiration-time}")
     private long refreshExpiration;
+    
+    @Autowired
+    private UserRepository userRepository; 
+    
+    @Autowired
+    private VendorRepository vendorRepository;
+
+    
+    @Autowired
+    private JavaMailSender mailSender;
+    
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     // ---------------- Extract Claims ----------------
     public String extractUsername(String token) {
@@ -100,4 +125,78 @@ public class JwtService {
     public long getRefreshExpiration() {
         return refreshExpiration;
     }
+    
+ // ------------------ Send OTP ------------------
+    public String sendOtp(String email) {
+        // Lookup in both repositories
+        if (!userRepository.findByEmail(email).isPresent() && !vendorRepository.findByBusinessEmail(email).isPresent()) {
+            throw new RuntimeException("User or Vendor not found");
+        }
+
+        String otp = String.valueOf((int) (Math.random() * 900000) + 100000); // 6-digit OTP
+
+        // Create JWT with OTP
+        String token = Jwts.builder()
+                .claim("email", email)
+                .claim("otp", otp)
+                .setExpiration(Date.from(Instant.now().plus(5, ChronoUnit.MINUTES)))
+                .signWith(SignatureAlgorithm.HS256, secretKey)
+                .compact();
+
+        // Send OTP via email
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(email);
+        message.setSubject("Password Reset OTP");
+        message.setText("Your OTP is: " + otp + "\nIt is valid for 5 minutes.");
+        mailSender.send(message);
+
+        return token;
+    }
+
+    // ------------------ Verify OTP ------------------
+    public boolean verifyOtp(String token, String inputOtp) {
+        try {
+            Claims claims = Jwts.parser()
+                    .setSigningKey(secretKey)
+                    .parseClaimsJws(token)
+                    .getBody();
+
+            String otp = claims.get("otp", String.class);
+            return otp.equals(inputOtp);
+        } catch (Exception e) {
+            return false; // expired or invalid
+        }
+    }
+
+    // ------------------ Reset Password ------------------
+    public void resetPassword(String token, String email, String newPassword) {
+        try {
+            Claims claims = Jwts.parser()
+                    .setSigningKey(secretKey)
+                    .parseClaimsJws(token)
+                    .getBody();
+
+            String tokenEmail = claims.get("email", String.class);
+            if (!tokenEmail.equals(email)) {
+                throw new RuntimeException("Invalid token for email");
+            }
+
+            // Update password for User or Vendor
+            if (userRepository.findByEmail(email).isPresent()) {
+                User user = userRepository.findByEmail(email).get();
+                user.setPassword(passwordEncoder.encode(newPassword));
+                userRepository.save(user);
+            } else if (vendorRepository.findByBusinessEmail(email).isPresent()) {
+                Vendor vendor = vendorRepository.findByBusinessEmail(email).get();
+                vendor.setPassword(passwordEncoder.encode(newPassword));
+                vendorRepository.save(vendor);
+            } else {
+                throw new RuntimeException("User or Vendor not found");
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid or expired token");
+        }
+    }
+
 }

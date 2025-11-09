@@ -1,13 +1,18 @@
 package com.tiffin_sathi.controller;
 
+import com.tiffin_sathi.dtos.ForgotPasswordRequest;
 import com.tiffin_sathi.dtos.JwtResponse;
 import com.tiffin_sathi.dtos.LoginRequest;
+import com.tiffin_sathi.dtos.ResetPasswordRequest;
 import com.tiffin_sathi.dtos.SignupRequest;
 import com.tiffin_sathi.dtos.VendorSignupRequest;
+import com.tiffin_sathi.dtos.VerifyOtpRequest;
 import com.tiffin_sathi.model.User;
 import com.tiffin_sathi.model.Vendor;
 import com.tiffin_sathi.services.AuthenticationService;
 import com.tiffin_sathi.services.JwtService;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -48,9 +53,11 @@ public class AuthenticationController {
         if (authResult instanceof User user) {
             accessToken = jwtService.generateToken(user);
             refreshToken = jwtService.generateRefreshToken(user);
+            System.out.println("user side");
         } else if (authResult instanceof Vendor vendor) {
             accessToken = jwtService.generateToken(vendor);
             refreshToken = jwtService.generateRefreshToken(vendor);
+            System.out.println("vendorside");
         } else {
             throw new RuntimeException("Authentication failed");
         }
@@ -64,4 +71,32 @@ public class AuthenticationController {
 
         return ResponseEntity.ok(response);
     }
+    
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+    	
+        String token = jwtService.sendOtp(request.getEmail());
+        return ResponseEntity.ok(token); // send token to frontend
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<String> verifyOtp(@RequestBody VerifyOtpRequest request) {
+        boolean isValid = jwtService.verifyOtp(request.getToken(), request.getOtp());
+        if (isValid) {
+            return ResponseEntity.ok("OTP verified successfully");
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid or expired OTP");
+        }
+    }
+    
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@RequestBody ResetPasswordRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Passwords do not match");
+        }
+
+        jwtService.resetPassword(request.getToken(), request.getEmail(), request.getNewPassword());
+        return ResponseEntity.ok("Password reset successfully");
+    }
+    
 }

@@ -32,12 +32,18 @@ public class SecurityConfiguration {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-            	    .requestMatchers("/auth/**").permitAll()
-            	    .requestMatchers("/vendor/**").hasAuthority("VENDOR")  // or hasRole("VENDOR") if roles have ROLE_ prefix
-            	    .requestMatchers("/user/**").hasAuthority("USER")       // same as above
-            	    .anyRequest().authenticated()
-            	)
-
+                // Public endpoints (no authentication)
+                .requestMatchers("/auth/**").permitAll()
+                
+                // Role-based access
+                .requestMatchers("/vendor/**").hasAuthority("VENDOR")
+                .requestMatchers("/user/**").hasAuthority("USER")
+                .requestMatchers("/delivery/**").hasAuthority("DELIVERY")
+                .requestMatchers("/admin/**").hasAuthority("ADMIN")
+                
+                // Any other request requires authentication
+                .anyRequest().authenticated()
+            )
             .sessionManagement(session -> 
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
@@ -51,7 +57,11 @@ public class SecurityConfiguration {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173","http://localhost:3306", "http://localhost:3000", "http://localhost:8080"));
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://localhost:3000",
+                "http://localhost:8080"
+        ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
