@@ -82,7 +82,7 @@ public class Vendor implements UserDetails {
     private byte[] licenseDocument;
 
     // 🔐 Add password field for login
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String password;
 
     @Enumerated(EnumType.STRING)
