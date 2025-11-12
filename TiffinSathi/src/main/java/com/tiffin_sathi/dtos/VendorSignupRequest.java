@@ -7,6 +7,7 @@ public class VendorSignupRequest {
     private String email;
     private String phoneNumber;
     private String password;
+    private byte[] profilePicture;
 
     // Optional
     private String businessAddress;
@@ -99,4 +100,14 @@ public class VendorSignupRequest {
 
     public byte[] getLicenseDocument() { return licenseDocument; }
     public void setLicenseDocument(byte[] licenseDocument) { this.licenseDocument = licenseDocument; }
+
+	public byte[] getProfilePicture() {
+		return profilePicture;
+	}
+
+	public void setProfilePicture(byte[] profilePicture) {
+		this.profilePicture = profilePicture;
+	}
+    
+    
 }

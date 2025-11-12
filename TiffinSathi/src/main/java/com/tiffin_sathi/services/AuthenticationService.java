@@ -60,9 +60,11 @@ public class AuthenticationService {
         vendor.setPhone(input.getPhoneNumber());
         vendor.setPassword(passwordEncoder.encode(input.getPassword()));
         vendor.setRole(Role.VENDOR);
+        vendor.setProfilePicture(input.getProfilePicture());
         vendor.setStatus(VendorStatus.PENDING); // pending approval
 
         // Optional fields
+        
         vendor.setBusinessAddress(input.getBusinessAddress());
         vendor.setAlternatePhone(input.getAlternatePhone());
         vendor.setCuisineType(input.getCuisineType());

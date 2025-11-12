@@ -18,6 +18,10 @@ public class Vendor implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "vendor_id")
     private Long vendorId;
+    
+    @Lob
+    @Column(columnDefinition = "LONGBLOB")
+    private byte[] profilePicture;
 
     @Column(name = "owner_name", length = 150, nullable = false)
     private String ownerName;
@@ -222,4 +226,15 @@ public class Vendor implements UserDetails {
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
     public void setPassword(String password) { this.password = password; }
+
+
+	public byte[] getProfilePicture() {
+		return profilePicture;
+	}
+
+
+	public void setProfilePicture(byte[] profilePicture) {
+		this.profilePicture = profilePicture;
+	}
+    
 }
