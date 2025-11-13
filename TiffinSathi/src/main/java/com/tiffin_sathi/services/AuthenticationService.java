@@ -49,7 +49,8 @@ public class AuthenticationService {
 
     // -------- Signup for vendor --------
     public Vendor signupVendor(VendorSignupRequest input) {
-        if (vendorRepository.findByBusinessEmail(input.getEmail()).isPresent() && userRepository.existsByEmail(input.getEmail())) {
+        if (vendorRepository.findByBusinessEmail(input.getEmail()).isPresent() ||
+                userRepository.existsByEmail(input.getEmail())) {
             throw new RuntimeException("Business email already in use");
         }
 
@@ -58,13 +59,16 @@ public class AuthenticationService {
         vendor.setBusinessName(input.getBusinessName());
         vendor.setBusinessEmail(input.getEmail());
         vendor.setPhone(input.getPhoneNumber());
-        vendor.setPassword(passwordEncoder.encode(input.getPassword()));
+
+        // Generate a random password or use a default one
+        String rawPassword = input.getPassword() != null ? input.getPassword() : "defaultPassword123";
+        vendor.setPassword(passwordEncoder.encode(rawPassword));
+
         vendor.setRole(Role.VENDOR);
         vendor.setProfilePicture(input.getProfilePicture());
-        vendor.setStatus(VendorStatus.PENDING); // pending approval
+        vendor.setStatus(VendorStatus.PENDING);
 
-        // Optional fields
-        
+        // Set all other fields
         vendor.setBusinessAddress(input.getBusinessAddress());
         vendor.setAlternatePhone(input.getAlternatePhone());
         vendor.setCuisineType(input.getCuisineType());
@@ -78,7 +82,12 @@ public class AuthenticationService {
         vendor.setVatNumber(input.getVatNumber());
         vendor.setFoodLicenseNumber(input.getFoodLicenseNumber());
         vendor.setCompanyRegistrationNumber(input.getCompanyRegistrationNumber());
-        vendor.setLicenseDocument(input.getLicenseDocument());
+
+        // Document URLs from Cloudinary
+        vendor.setFssaiLicenseUrl(input.getFssaiLicenseUrl());
+        vendor.setPanCardUrl(input.getPanCardUrl());
+        vendor.setBankProofUrl(input.getBankProofUrl());
+        vendor.setMenuCardUrl(input.getMenuCardUrl());
 
         return vendorRepository.save(vendor);
     }

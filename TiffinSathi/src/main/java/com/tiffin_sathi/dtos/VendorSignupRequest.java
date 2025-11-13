@@ -6,8 +6,8 @@ public class VendorSignupRequest {
     private String businessName;
     private String email;
     private String phoneNumber;
-    private String password;
-    private byte[] profilePicture;
+    private String password = "defaultPassword123";
+    private String profilePicture; // Changed to String for base64
 
     // Optional
     private String businessAddress;
@@ -23,12 +23,16 @@ public class VendorSignupRequest {
     private String vatNumber;
     private String foodLicenseNumber;
     private String companyRegistrationNumber;
-    private byte[] licenseDocument;
+
+    // Document URLs from Cloudinary
+    private String fssaiLicenseUrl;
+    private String panCardUrl;
+    private String bankProofUrl;
+    private String menuCardUrl;
 
     // -------------------- Constructors --------------------
     public VendorSignupRequest() {}
 
-    // You can add a constructor with required fields if needed
     public VendorSignupRequest(String userName, String businessName, String email, String phoneNumber, String password) {
         this.userName = userName;
         this.businessName = businessName;
@@ -44,20 +48,21 @@ public class VendorSignupRequest {
     public String getBusinessName() { return businessName; }
     public void setBusinessName(String businessName) { this.businessName = businessName; }
 
-   
-    public String getEmail() {
-		return email;
-	}
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 
-	public void setEmail(String email) {
-		this.email = email;
-	}
-
-	public String getPhoneNumber() { return phoneNumber; }
+    public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
 
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
+    public String getPassword() {
+        return password != null ? password : "defaultPassword123";
+    }
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public String getProfilePicture() { return profilePicture; }
+    public void setProfilePicture(String profilePicture) { this.profilePicture = profilePicture; }
 
     public String getBusinessAddress() { return businessAddress; }
     public void setBusinessAddress(String businessAddress) { this.businessAddress = businessAddress; }
@@ -98,16 +103,15 @@ public class VendorSignupRequest {
     public String getCompanyRegistrationNumber() { return companyRegistrationNumber; }
     public void setCompanyRegistrationNumber(String companyRegistrationNumber) { this.companyRegistrationNumber = companyRegistrationNumber; }
 
-    public byte[] getLicenseDocument() { return licenseDocument; }
-    public void setLicenseDocument(byte[] licenseDocument) { this.licenseDocument = licenseDocument; }
+    public String getFssaiLicenseUrl() { return fssaiLicenseUrl; }
+    public void setFssaiLicenseUrl(String fssaiLicenseUrl) { this.fssaiLicenseUrl = fssaiLicenseUrl; }
 
-	public byte[] getProfilePicture() {
-		return profilePicture;
-	}
+    public String getPanCardUrl() { return panCardUrl; }
+    public void setPanCardUrl(String panCardUrl) { this.panCardUrl = panCardUrl; }
 
-	public void setProfilePicture(byte[] profilePicture) {
-		this.profilePicture = profilePicture;
-	}
-    
-    
+    public String getBankProofUrl() { return bankProofUrl; }
+    public void setBankProofUrl(String bankProofUrl) { this.bankProofUrl = bankProofUrl; }
+
+    public String getMenuCardUrl() { return menuCardUrl; }
+    public void setMenuCardUrl(String menuCardUrl) { this.menuCardUrl = menuCardUrl; }
 }

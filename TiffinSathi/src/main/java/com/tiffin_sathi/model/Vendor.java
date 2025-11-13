@@ -18,10 +18,9 @@ public class Vendor implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "vendor_id")
     private Long vendorId;
-    
-    @Lob
-    @Column(columnDefinition = "LONGBLOB")
-    private byte[] profilePicture;
+
+    @Column(name = "profile_picture", columnDefinition = "LONGTEXT")
+    private String profilePicture; // Changed to String for base64
 
     @Column(name = "owner_name", length = 150, nullable = false)
     private String ownerName;
@@ -52,7 +51,7 @@ public class Vendor implements UserDetails {
     private String cuisineType;
 
     @Column(name = "capacity")
-    private Integer capacity;
+    private Integer capacity; // Can be negative now
 
     @Column(columnDefinition = "TEXT")
     private String description;
@@ -81,9 +80,18 @@ public class Vendor implements UserDetails {
     @Column(name = "company_registration_number", length = 50)
     private String companyRegistrationNumber;
 
-    @Lob
-    @Column(name = "license_document", columnDefinition = "LONGBLOB")
-    private byte[] licenseDocument;
+    // New document fields - storing Cloudinary URLs
+    @Column(name = "fssai_license_url", length = 500)
+    private String fssaiLicenseUrl;
+
+    @Column(name = "pan_card_url", length = 500)
+    private String panCardUrl;
+
+    @Column(name = "bank_proof_url", length = 500)
+    private String bankProofUrl;
+
+    @Column(name = "menu_card_url", length = 500)
+    private String menuCardUrl;
 
     // 🔐 Add password field for login
     @Column(nullable = true)
@@ -101,13 +109,11 @@ public class Vendor implements UserDetails {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-
     public Vendor() {
         this.status = VendorStatus.PENDING;
         this.yearsInBusiness = 0;
         this.role = Role.VENDOR;
     }
-
 
     // ------------------------
     // ✅ UserDetails methods
@@ -148,13 +154,15 @@ public class Vendor implements UserDetails {
         return true;
     }
 
-
     // ------------------------
     // Getters & Setters
     // ------------------------
 
     public Long getVendorId() { return vendorId; }
     public void setVendorId(Long vendorId) { this.vendorId = vendorId; }
+
+    public String getProfilePicture() { return profilePicture; }
+    public void setProfilePicture(String profilePicture) { this.profilePicture = profilePicture; }
 
     public String getOwnerName() { return ownerName; }
     public void setOwnerName(String ownerName) { this.ownerName = ownerName; }
@@ -213,8 +221,17 @@ public class Vendor implements UserDetails {
     public String getCompanyRegistrationNumber() { return companyRegistrationNumber; }
     public void setCompanyRegistrationNumber(String companyRegistrationNumber) { this.companyRegistrationNumber = companyRegistrationNumber; }
 
-    public byte[] getLicenseDocument() { return licenseDocument; }
-    public void setLicenseDocument(byte[] licenseDocument) { this.licenseDocument = licenseDocument; }
+    public String getFssaiLicenseUrl() { return fssaiLicenseUrl; }
+    public void setFssaiLicenseUrl(String fssaiLicenseUrl) { this.fssaiLicenseUrl = fssaiLicenseUrl; }
+
+    public String getPanCardUrl() { return panCardUrl; }
+    public void setPanCardUrl(String panCardUrl) { this.panCardUrl = panCardUrl; }
+
+    public String getBankProofUrl() { return bankProofUrl; }
+    public void setBankProofUrl(String bankProofUrl) { this.bankProofUrl = bankProofUrl; }
+
+    public String getMenuCardUrl() { return menuCardUrl; }
+    public void setMenuCardUrl(String menuCardUrl) { this.menuCardUrl = menuCardUrl; }
 
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
@@ -226,15 +243,4 @@ public class Vendor implements UserDetails {
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
     public void setPassword(String password) { this.password = password; }
-
-
-	public byte[] getProfilePicture() {
-		return profilePicture;
-	}
-
-
-	public void setProfilePicture(byte[] profilePicture) {
-		this.profilePicture = profilePicture;
-	}
-    
 }
