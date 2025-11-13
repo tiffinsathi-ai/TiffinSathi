@@ -7,7 +7,7 @@ public class VendorSignupRequest {
     private String email;
     private String phoneNumber;
     private String password;
-    private byte[] profilePicture;
+    private byte[] profilePicture; //added
 
     // Optional
     private String businessAddress;
@@ -23,7 +23,7 @@ public class VendorSignupRequest {
     private String vatNumber;
     private String foodLicenseNumber;
     private String companyRegistrationNumber;
-    private byte[] licenseDocument;
+    private byte[] licenseDocument; 
 
     // -------------------- Constructors --------------------
     public VendorSignupRequest() {}
