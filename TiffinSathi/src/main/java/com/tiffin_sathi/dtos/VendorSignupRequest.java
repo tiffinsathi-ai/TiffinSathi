@@ -6,7 +6,7 @@ public class VendorSignupRequest {
     private String businessName;
     private String email;
     private String phoneNumber;
-    private String password = "defaultPassword123";
+    private String password;
     private String profilePicture; // Changed to String for base64
 
     // Optional
@@ -33,12 +33,11 @@ public class VendorSignupRequest {
     // -------------------- Constructors --------------------
     public VendorSignupRequest() {}
 
-    public VendorSignupRequest(String userName, String businessName, String email, String phoneNumber, String password) {
+    public VendorSignupRequest(String userName, String businessName, String email, String phoneNumber) {
         this.userName = userName;
         this.businessName = businessName;
         this.email = email;
         this.phoneNumber = phoneNumber;
-        this.password = password;
     }
 
     // -------------------- Getters and Setters --------------------
@@ -55,7 +54,7 @@ public class VendorSignupRequest {
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
 
     public String getPassword() {
-        return password != null ? password : "defaultPassword123";
+        return password;
     }
     public void setPassword(String password) {
         this.password = password;

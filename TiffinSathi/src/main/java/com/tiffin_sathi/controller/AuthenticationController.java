@@ -10,6 +10,7 @@ import com.tiffin_sathi.dtos.VerifyOtpRequest;
 import com.tiffin_sathi.model.User;
 import com.tiffin_sathi.model.Vendor;
 import com.tiffin_sathi.services.AuthenticationService;
+import com.tiffin_sathi.services.EmailService;
 import com.tiffin_sathi.services.JwtService;
 
 import org.springframework.http.HttpStatus;
@@ -22,10 +23,12 @@ public class AuthenticationController {
 
     private final JwtService jwtService;
     private final AuthenticationService authenticationService;
+    private final EmailService emailService;
 
-    public AuthenticationController(JwtService jwtService, AuthenticationService authenticationService) {
+    public AuthenticationController(JwtService jwtService, AuthenticationService authenticationService, EmailService emailService) {
         this.jwtService = jwtService;
         this.authenticationService = authenticationService;
+        this.emailService = emailService;
     }
 
     // -------- User Signup --------
@@ -45,19 +48,27 @@ public class AuthenticationController {
     // -------- Login (User or Vendor) --------
     @PostMapping("/login")
     public ResponseEntity<JwtResponse> authenticate(@RequestBody LoginRequest loginRequest) {
+        System.out.println("Login attempt for email: " + loginRequest.email());
+
         Object authResult = authenticationService.authenticate(loginRequest);
 
         String accessToken;
         String refreshToken;
+        String role;
+        String email;
 
         if (authResult instanceof User user) {
             accessToken = jwtService.generateToken(user);
             refreshToken = jwtService.generateRefreshToken(user);
-            System.out.println("user side");
+            role = user.getRole().name();
+            email = user.getEmail();
+            System.out.println("User login successful - Email: " + email + ", Role: " + role);
         } else if (authResult instanceof Vendor vendor) {
             accessToken = jwtService.generateToken(vendor);
             refreshToken = jwtService.generateRefreshToken(vendor);
-            System.out.println("vendorside");
+            role = vendor.getRole().name();
+            email = vendor.getBusinessEmail();
+            System.out.println("Vendor login successful - Email: " + email + ", Role: " + role);
         } else {
             throw new RuntimeException("Authentication failed");
         }
@@ -68,6 +79,10 @@ public class AuthenticationController {
                 refreshToken,
                 jwtService.getRefreshExpiration()
         );
+
+        // Log token details for debugging
+        System.out.println("Generated Token - Role: " + jwtService.extractRole(accessToken) +
+                ", Email: " + jwtService.extractEmail(accessToken));
 
         return ResponseEntity.ok(response);
     }

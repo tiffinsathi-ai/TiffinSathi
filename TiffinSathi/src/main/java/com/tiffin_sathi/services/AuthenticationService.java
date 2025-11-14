@@ -17,6 +17,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Random;
+
 @Service
 public class AuthenticationService {
 
@@ -24,20 +26,18 @@ public class AuthenticationService {
     private final VendorRepository vendorRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-    
-    @Autowired
-    private EmailService emailService; 
-    
-    
+    private final EmailService emailService;
 
     public AuthenticationService(UserRepository userRepository,
                                  VendorRepository vendorRepository,
                                  AuthenticationManager authenticationManager,
-                                 PasswordEncoder passwordEncoder) {
+                                 PasswordEncoder passwordEncoder,
+                                 EmailService emailService) {
         this.userRepository = userRepository;
         this.vendorRepository = vendorRepository;
         this.authenticationManager = authenticationManager;
         this.passwordEncoder = passwordEncoder;
+        this.emailService = emailService;
     }
 
     // -------- Signup for normal user --------
@@ -71,9 +71,9 @@ public class AuthenticationService {
         vendor.setBusinessEmail(input.getEmail());
         vendor.setPhone(input.getPhoneNumber());
 
-        // Password
-        String rawPassword = input.getPassword() != null ? input.getPassword() : "defaultPassword123";
-        vendor.setPassword(passwordEncoder.encode(rawPassword));
+        // Generate a random password or use a default one
+        String tempPassword = generateTempPassword();
+        vendor.setPassword(passwordEncoder.encode(tempPassword));
 
         vendor.setRole(Role.VENDOR);
         vendor.setProfilePicture(input.getProfilePicture());
@@ -100,6 +100,14 @@ public class AuthenticationService {
         vendor.setBankProofUrl(input.getBankProofUrl());
         vendor.setMenuCardUrl(input.getMenuCardUrl());
 
+        Vendor savedVendor = vendorRepository.save(vendor);
+
+        // Send registration confirmation email with temp password
+        emailService.sendVendorRegistrationEmail(
+                savedVendor.getBusinessEmail(),
+                savedVendor.getBusinessName(),
+                tempPassword
+        );
         // Save vendor (ONLY ONCE)
         Vendor savedVendor = vendorRepository.save(vendor);
 
@@ -170,4 +178,14 @@ public class AuthenticationService {
 
         throw new RuntimeException("User or Vendor not found");
     }
-}
+    // Generate temporary password
+    private String generateTempPassword() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        Random random = new Random();
+        StringBuilder sb = new StringBuilder(8);
+        for (int i = 0; i < 8; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
+    }
+ }

@@ -30,26 +30,34 @@ public class SecurityConfiguration {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth -> auth
-                // Public endpoints (no authentication)
-                .requestMatchers("/auth/**").permitAll()
-                
-                // Role-based access
-                .requestMatchers("/vendor/**").hasAuthority("VENDOR")
-                .requestMatchers("/user/**").hasAuthority("USER")
-                .requestMatchers("/delivery/**").hasAuthority("DELIVERY")
-                .requestMatchers("/admin/**").hasAuthority("ADMIN")
-                
-                // Any other request requires authentication
-                .anyRequest().authenticated()
-            )
-            .sessionManagement(session -> 
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            .authenticationProvider(authenticationProvider)
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()));
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        // Public endpoints (no authentication)
+                        .requestMatchers("/auth/**").permitAll()
+
+                        // Role-based access using hasRole (it automatically adds ROLE_ prefix)
+                        .requestMatchers("/vendor/**").hasRole("VENDOR")
+                        .requestMatchers("/user/**").hasRole("USER")
+                        .requestMatchers("/delivery/**").hasRole("DELIVERY")
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+
+                        // User management endpoints
+                        .requestMatchers("/api/users").hasRole("ADMIN")
+                        .requestMatchers("/api/users/**").hasAnyRole("USER", "ADMIN")
+
+                        // Vendor management endpoints
+                        .requestMatchers("/api/vendors").hasRole("ADMIN")
+                        .requestMatchers("/api/vendors/**").hasAnyRole("VENDOR", "ADMIN")
+
+                        // Any other request requires authentication
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .authenticationProvider(authenticationProvider)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()));
 
         return http.build();
     }
