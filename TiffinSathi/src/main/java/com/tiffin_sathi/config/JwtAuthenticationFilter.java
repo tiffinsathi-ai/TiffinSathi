@@ -61,6 +61,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             final String jwt = authHeader.substring(7);
             final String userEmail = jwtService.extractUsername(jwt);
+            final String userRole = jwtService.extractRole(jwt);
 
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
@@ -81,6 +82,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             filterChain.doFilter(request, response);
         } catch (Exception exception) {
+            System.err.println("JWT Filter Error: " + exception.getMessage());
+            exception.printStackTrace();
             // Use HandlerExceptionResolver to handle JWT exceptions
             handlerExceptionResolver.resolveException(request, response, null, exception);
         }

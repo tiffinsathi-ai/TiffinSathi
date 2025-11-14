@@ -59,6 +59,14 @@ public class JwtService {
         return extractClaim(token, Claims::getSubject);
     }
 
+    public String extractRole(String token) {
+        return extractClaim(token, claims -> claims.get("role", String.class));
+    }
+
+    public String extractEmail(String token) {
+        return extractClaim(token, Claims::getSubject); // Subject is email
+    }
+
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
@@ -78,20 +86,39 @@ public class JwtService {
 
     // ---------------- Token Generation ----------------
     public String generateToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails, jwtExpiration);
+        Map<String, Object> extraClaims = new HashMap<>();
+
+        if (userDetails instanceof User user) {
+            extraClaims.put("role", user.getRole().name());
+            extraClaims.put("email", user.getEmail());
+            extraClaims.put("userId", user.getId());
+        } else if (userDetails instanceof Vendor vendor) {
+            extraClaims.put("role", vendor.getRole().name());
+            extraClaims.put("email", vendor.getBusinessEmail());
+            extraClaims.put("vendorId", vendor.getVendorId());
+        }
+
+        return generateToken(extraClaims, userDetails, jwtExpiration);
     }
 
     public String generateRefreshToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails, refreshExpiration);
+        Map<String, Object> extraClaims = new HashMap<>();
+
+        if (userDetails instanceof User user) {
+            extraClaims.put("role", user.getRole().name());
+            extraClaims.put("email", user.getEmail());
+        } else if (userDetails instanceof Vendor vendor) {
+            extraClaims.put("role", vendor.getRole().name());
+            extraClaims.put("email", vendor.getBusinessEmail());
+        }
+
+        return generateToken(extraClaims, userDetails, refreshExpiration);
     }
 
     private String generateToken(Map<String, Object> extraClaims, UserDetails userDetails, long expirationTime) {
-        Map<String, Object> claims = new HashMap<>(extraClaims);
-        claims.put("role", userDetails.getAuthorities()); // optional role info
-
         return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(userDetails.getUsername())
+                .setClaims(extraClaims)
+                .setSubject(userDetails.getUsername()) // username is email
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expirationTime))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
@@ -101,7 +128,14 @@ public class JwtService {
     // ---------------- Token Validation ----------------
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
-        return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+        final String role = extractRole(token);
+
+        boolean validUsername = username.equals(userDetails.getUsername());
+        boolean notExpired = !isTokenExpired(token);
+
+        System.out.println("Token validation - Username: " + username + ", Role: " + role + ", Valid: " + validUsername + ", Not Expired: " + notExpired);
+
+        return validUsername && notExpired;
     }
 
     private boolean isTokenExpired(String token) {
