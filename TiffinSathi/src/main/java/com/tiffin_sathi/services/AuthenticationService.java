@@ -6,6 +6,12 @@ import com.tiffin_sathi.dtos.VendorSignupRequest;
 import com.tiffin_sathi.model.*;
 import com.tiffin_sathi.repository.UserRepository;
 import com.tiffin_sathi.repository.VendorRepository;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,6 +24,11 @@ public class AuthenticationService {
     private final VendorRepository vendorRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
+    
+    @Autowired
+    private EmailService emailService; 
+    
+    
 
     public AuthenticationService(UserRepository userRepository,
                                  VendorRepository vendorRepository,
@@ -60,7 +71,7 @@ public class AuthenticationService {
         vendor.setBusinessEmail(input.getEmail());
         vendor.setPhone(input.getPhoneNumber());
 
-        // Generate a random password or use a default one
+        // Password
         String rawPassword = input.getPassword() != null ? input.getPassword() : "defaultPassword123";
         vendor.setPassword(passwordEncoder.encode(rawPassword));
 
@@ -68,7 +79,7 @@ public class AuthenticationService {
         vendor.setProfilePicture(input.getProfilePicture());
         vendor.setStatus(VendorStatus.PENDING);
 
-        // Set all other fields
+        // Other fields
         vendor.setBusinessAddress(input.getBusinessAddress());
         vendor.setAlternatePhone(input.getAlternatePhone());
         vendor.setCuisineType(input.getCuisineType());
@@ -83,14 +94,51 @@ public class AuthenticationService {
         vendor.setFoodLicenseNumber(input.getFoodLicenseNumber());
         vendor.setCompanyRegistrationNumber(input.getCompanyRegistrationNumber());
 
-        // Document URLs from Cloudinary
+        // Cloudinary documents
         vendor.setFssaiLicenseUrl(input.getFssaiLicenseUrl());
         vendor.setPanCardUrl(input.getPanCardUrl());
         vendor.setBankProofUrl(input.getBankProofUrl());
         vendor.setMenuCardUrl(input.getMenuCardUrl());
 
-        return vendorRepository.save(vendor);
+        // Save vendor (ONLY ONCE)
+        Vendor savedVendor = vendorRepository.save(vendor);
+
+        // Send emails after save
+        sendEmails(savedVendor);
+
+        return savedVendor;
     }
+
+    
+    private void sendEmails(Vendor vendor) {
+
+        // Get all admins from DB
+        List<User> admins = userRepository.findByRole(Role.ADMIN);
+
+        // Notify each admin
+        for (User admin : admins) {
+            emailService.sendEmail(
+                admin.getEmail(),
+                "New Vendor Registration Request",
+                "A new vendor has requested registration:\n\n" +
+                        "Vendor: " + vendor.getBusinessName() + "\n" +
+                        "Email: " + vendor.getBusinessEmail() + "\n" +
+                        "Phone: " + vendor.getPhone()
+            );
+        }
+
+        // Send confirmation email to vendor
+        emailService.sendEmail(
+            vendor.getBusinessEmail(),
+            "Your Vendor Registration Request is Submitted",
+            "Hello " + vendor.getOwnerName() + ",\n\n" +
+                    "Your request to join our platform has been submitted.\n" +
+                    "We will review your application and notify you soon."
+        );
+    }
+
+
+    
 
     // -------- Authenticate both User and Vendor --------
     public Object authenticate(LoginRequest input) {
