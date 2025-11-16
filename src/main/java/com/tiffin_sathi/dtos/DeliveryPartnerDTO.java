@@ -19,6 +19,8 @@ public class DeliveryPartnerDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    private String tempPassword;
+
     // Getters and Setters
     public Long getPartnerId() { return partnerId; }
     public void setPartnerId(Long partnerId) { this.partnerId = partnerId; }
@@ -61,4 +63,12 @@ public class DeliveryPartnerDTO {
 
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public String getTempPassword() {
+        return tempPassword;
+    }
+
+    public void setTempPassword(String tempPassword) {
+        this.tempPassword = tempPassword;
+    }
 }

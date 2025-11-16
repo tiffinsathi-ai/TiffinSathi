@@ -56,4 +56,32 @@ public class EmailService {
                 "Best regards,\nTiffin Sathi Team");
         mailSender.send(message);
     }
+
+    // Method for sending delivery partner credentials
+    public void sendDeliveryPartnerCredentials(String deliveryEmail, String name, String tempPassword, String vendorName) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(deliveryEmail);
+        message.setSubject("Welcome to Tiffin Sathi - Delivery Partner Account");
+        message.setText("Dear " + name + ",\n\n" +
+                "Welcome to Tiffin Sathi! Your delivery partner account has been created successfully.\n\n" +
+                "Your Login Credentials:\n" +
+                "Email: " + deliveryEmail + "\n" +
+                "Temporary Password: " + tempPassword + "\n\n" +
+                "Assigned Vendor: " + vendorName + "\n\n" +
+                "Please login and change your password immediately for security reasons.\n\n" +
+                "Best regards,\nTiffin Sathi Team");
+        mailSender.send(message);
+    }
+
+    // Method for sending password reset confirmation
+    public void sendPasswordResetConfirmation(String email, String name) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(email);
+        message.setSubject("Password Reset Successful - Tiffin Sathi");
+        message.setText("Dear " + name + ",\n\n" +
+                "Your password has been reset successfully.\n\n" +
+                "If you did not request this change, please contact support immediately.\n\n" +
+                "Best regards,\nTiffin Sathi Team");
+        mailSender.send(message);
+    }
 }

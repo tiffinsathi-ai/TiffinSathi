@@ -60,6 +60,11 @@ public class SecurityConfiguration {
 
                         // Delivery partners endpoints - VENDOR only
                         .requestMatchers("/api/delivery-partners/**").hasRole("VENDOR")
+                        .requestMatchers("/api/delivery-partners/vendor/**").hasRole("VENDOR")
+
+                        // Delivery partner self-management endpoints
+                        .requestMatchers("/api/delivery/change-password").hasRole("DELIVERY")
+                        .requestMatchers("/api/delivery/profile").hasRole("DELIVERY")
 
                         // Meal sets vendor endpoints - VENDOR only
                         .requestMatchers(HttpMethod.POST, "/api/meal-sets").hasRole("VENDOR")

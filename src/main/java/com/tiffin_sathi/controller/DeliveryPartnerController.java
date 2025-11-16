@@ -31,7 +31,25 @@ public class DeliveryPartnerController {
                 return ResponseEntity.badRequest().body("Vendor not found");
             }
             DeliveryPartnerDTO deliveryPartner = deliveryPartnerService.createDeliveryPartner(vendorId, createDeliveryPartnerDTO);
+
+            // Return the delivery partner with temporary password
             return ResponseEntity.ok(deliveryPartner);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // Add password reset endpoint for vendors
+    @PostMapping("/vendor/{partnerId}/reset-password")
+    @PreAuthorize("hasRole('VENDOR')")
+    public ResponseEntity<?> resetDeliveryPartnerPassword(@PathVariable Long partnerId) {
+        try {
+            Long vendorId = vendorContext.getCurrentVendorId();
+            if (vendorId == null) {
+                return ResponseEntity.badRequest().body("Vendor not found");
+            }
+            String message = deliveryPartnerService.resetDeliveryPartnerPassword(partnerId, vendorId);
+            return ResponseEntity.ok(message);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

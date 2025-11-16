@@ -6,11 +6,12 @@ import com.tiffin_sathi.model.Vendor;
 import com.tiffin_sathi.repository.DeliveryPartnerRepository;
 import com.tiffin_sathi.repository.VendorRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,6 +23,12 @@ public class DeliveryPartnerService {
     @Autowired
     private VendorRepository vendorRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private EmailService emailService;
+
     @Transactional
     public DeliveryPartnerDTO createDeliveryPartner(Long vendorId, CreateDeliveryPartnerDTO createDeliveryPartnerDTO) {
         Vendor vendor = vendorRepository.findById(vendorId)
@@ -32,6 +39,12 @@ public class DeliveryPartnerService {
                 createDeliveryPartnerDTO.getPhoneNumber(), vendorId)) {
             throw new RuntimeException("Delivery partner with phone number '" +
                     createDeliveryPartnerDTO.getPhoneNumber() + "' already exists");
+        }
+
+        // Check if email already exists
+        if (deliveryPartnerRepository.existsByEmail(createDeliveryPartnerDTO.getEmail())) {
+            throw new RuntimeException("Delivery partner with email '" +
+                    createDeliveryPartnerDTO.getEmail() + "' already exists");
         }
 
         DeliveryPartner deliveryPartner = new DeliveryPartner();
@@ -46,8 +59,83 @@ public class DeliveryPartnerService {
         deliveryPartner.setProfilePictureUrl(createDeliveryPartnerDTO.getProfilePictureUrl());
         deliveryPartner.setIsActive(createDeliveryPartnerDTO.getIsActive());
 
+        // Generate temporary password and encode it
+        String tempPassword = generateTempPassword();
+        deliveryPartner.setPassword(passwordEncoder.encode(tempPassword));
+
         DeliveryPartner savedPartner = deliveryPartnerRepository.save(deliveryPartner);
-        return convertToDTO(savedPartner);
+
+        // Send email with credentials to delivery partner
+        try {
+            emailService.sendDeliveryPartnerCredentials(
+                    savedPartner.getEmail(),
+                    savedPartner.getName(),
+                    tempPassword,
+                    vendor.getBusinessName()
+            );
+        } catch (Exception e) {
+            // Log the error but don't fail the operation
+            System.err.println("Failed to send email to delivery partner: " + e.getMessage());
+        }
+
+        DeliveryPartnerDTO dto = convertToDTO(savedPartner);
+        dto.setTempPassword(tempPassword); // Return temp password in response
+        return dto;
+    }
+
+    // Change Delivery Partner Password (for delivery partners themselves)
+    @Transactional
+    public String changePassword(String email, ChangePasswordDTO changePasswordDTO) {
+        DeliveryPartner deliveryPartner = deliveryPartnerRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Delivery partner not found"));
+
+        // Verify current password
+        if (!passwordEncoder.matches(changePasswordDTO.getCurrentPassword(), deliveryPartner.getPassword())) {
+            throw new RuntimeException("Current password is incorrect");
+        }
+
+        // Check if new password matches confirm password
+        if (!changePasswordDTO.getNewPassword().equals(changePasswordDTO.getConfirmPassword())) {
+            throw new RuntimeException("New password and confirm password do not match");
+        }
+
+        // Update password
+        deliveryPartner.setPassword(passwordEncoder.encode(changePasswordDTO.getNewPassword()));
+        deliveryPartnerRepository.save(deliveryPartner);
+
+        // Send confirmation email
+        try {
+            emailService.sendPasswordResetConfirmation(email, deliveryPartner.getName());
+        } catch (Exception e) {
+            System.err.println("Failed to send password reset confirmation email: " + e.getMessage());
+        }
+
+        return "Password changed successfully";
+    }
+
+    // Reset password for delivery partner (Vendor operation)
+    @Transactional
+    public String resetDeliveryPartnerPassword(Long partnerId, Long vendorId) {
+        DeliveryPartner partner = deliveryPartnerRepository.findByPartnerIdAndVendorVendorId(partnerId, vendorId)
+                .orElseThrow(() -> new RuntimeException("Delivery partner not found or you don't have permission"));
+
+        String newPassword = generateTempPassword();
+        partner.setPassword(passwordEncoder.encode(newPassword));
+        deliveryPartnerRepository.save(partner);
+
+        // Send email with new password to delivery partner
+        try {
+            emailService.sendDeliveryPartnerCredentials(
+                    partner.getEmail(),
+                    partner.getName(),
+                    newPassword,
+                    partner.getVendor().getBusinessName()
+            );
+        } catch (Exception e) {
+            System.err.println("Failed to send password reset email: " + e.getMessage());
+        }
+
+        return "Password reset successfully. New password has been sent to the delivery partner's email.";
     }
 
     public List<DeliveryPartnerDTO> getDeliveryPartnersByVendor(Long vendorId) {
@@ -167,6 +255,17 @@ public class DeliveryPartnerService {
         return partners.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
+
+    // Generate temporary password
+    private String generateTempPassword() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        Random random = new Random();
+        StringBuilder sb = new StringBuilder(8);
+        for (int i = 0; i < 8; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
     }
 
     private DeliveryPartnerDTO convertToDTO(DeliveryPartner partner) {

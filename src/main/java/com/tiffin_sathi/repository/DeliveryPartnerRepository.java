@@ -12,21 +12,21 @@ import java.util.Optional;
 @Repository
 public interface DeliveryPartnerRepository extends JpaRepository<DeliveryPartner, Long> {
 
-    List<DeliveryPartner> findByVendorVendorId(Long vendorId);
-
-    List<DeliveryPartner> findByVendorVendorIdAndIsActiveTrue(Long vendorId);
-
-    Optional<DeliveryPartner> findByPartnerIdAndVendorVendorId(Long partnerId, Long vendorId);
-
-    Optional<DeliveryPartner> findByPhoneNumberAndVendorVendorId(String phoneNumber, Long vendorId);
+    Optional<DeliveryPartner> findByEmail(String email);
 
     boolean existsByPhoneNumberAndVendorVendorId(String phoneNumber, Long vendorId);
+    boolean existsByEmail(String email);
+
+    List<DeliveryPartner> findByVendorVendorId(Long vendorId);
+    List<DeliveryPartner> findByVendorVendorIdAndIsActiveTrue(Long vendorId);
+    Optional<DeliveryPartner> findByPartnerIdAndVendorVendorId(Long partnerId, Long vendorId);
 
     boolean existsByPhoneNumberAndVendorVendorIdAndPartnerIdNot(String phoneNumber, Long vendorId, Long partnerId);
+
 
     @Query("SELECT COUNT(dp) FROM DeliveryPartner dp WHERE dp.vendor.vendorId = :vendorId AND dp.isActive = true")
     long countActivePartnersByVendor(@Param("vendorId") Long vendorId);
 
-    @Query("SELECT dp FROM DeliveryPartner dp WHERE dp.vendor.vendorId = :vendorId AND dp.name LIKE %:name%")
+    @Query("SELECT dp FROM DeliveryPartner dp WHERE dp.vendor.vendorId = :vendorId AND LOWER(dp.name) LIKE LOWER(CONCAT('%', :name, '%'))")
     List<DeliveryPartner> findByVendorAndNameContaining(@Param("vendorId") Long vendorId, @Param("name") String name);
 }

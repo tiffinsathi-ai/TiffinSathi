@@ -2,8 +2,10 @@ package com.tiffin_sathi.config;
 
 import com.tiffin_sathi.repository.UserRepository;
 import com.tiffin_sathi.repository.VendorRepository;
+import com.tiffin_sathi.repository.DeliveryPartnerRepository;
 import com.tiffin_sathi.model.User;
 import com.tiffin_sathi.model.Vendor;
+import com.tiffin_sathi.model.DeliveryPartner;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,10 +22,14 @@ public class ApplicationConfiguration {
 
     private final UserRepository userRepository;
     private final VendorRepository vendorRepository;
+    private final DeliveryPartnerRepository deliveryPartnerRepository;
 
-    public ApplicationConfiguration(UserRepository userRepository, VendorRepository vendorRepository) {
+    public ApplicationConfiguration(UserRepository userRepository,
+                                    VendorRepository vendorRepository,
+                                    DeliveryPartnerRepository deliveryPartnerRepository) {
         this.userRepository = userRepository;
         this.vendorRepository = vendorRepository;
+        this.deliveryPartnerRepository = deliveryPartnerRepository;
     }
 
     @Bean
@@ -37,7 +43,11 @@ public class ApplicationConfiguration {
             Vendor vendor = vendorRepository.findByBusinessEmail(username).orElse(null);
             if (vendor != null) return vendor;
 
-            throw new UsernameNotFoundException("User or Vendor not found with email: " + username);
+            // Try delivery partner
+            DeliveryPartner deliveryPartner = deliveryPartnerRepository.findByEmail(username).orElse(null);
+            if (deliveryPartner != null) return deliveryPartner;
+
+            throw new UsernameNotFoundException("User, Vendor, or Delivery Partner not found with email: " + username);
         };
     }
 

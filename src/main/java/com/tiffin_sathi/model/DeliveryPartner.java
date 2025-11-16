@@ -3,12 +3,17 @@ package com.tiffin_sathi.model;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.Collections;
 
 @Entity
 @Table(name = "delivery_partners")
-public class DeliveryPartner {
+public class DeliveryPartner implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,6 +39,9 @@ public class DeliveryPartner {
     @Column(name = "email", length = 100)
     private String email;
 
+    @Column(name = "password", nullable = false)
+    private String password;
+
     @Column(name = "address", columnDefinition = "TEXT")
     private String address;
 
@@ -58,6 +66,37 @@ public class DeliveryPartner {
     // Constructors
     public DeliveryPartner() {}
 
+    // UserDetails implementation
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_DELIVERY"));
+    }
+
+    @Override
+    public String getUsername() {
+        return email;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return isActive;
+    }
+
     // Getters and Setters
     public Long getPartnerId() { return partnerId; }
     public void setPartnerId(Long partnerId) { this.partnerId = partnerId; }
@@ -79,6 +118,9 @@ public class DeliveryPartner {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
 
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
