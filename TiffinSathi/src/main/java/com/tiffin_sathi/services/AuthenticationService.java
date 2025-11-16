@@ -108,6 +108,8 @@ public class AuthenticationService {
                 savedVendor.getBusinessName(),
                 tempPassword
         );
+        // Save vendor (ONLY ONCE)
+        Vendor savedVendor = vendorRepository.save(vendor);
 
         // Send emails after save
         sendEmails(savedVendor);
