@@ -15,9 +15,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-
+import com.tiffin_sathi.model.DeliveryPartner;
 import com.tiffin_sathi.model.User;
 import com.tiffin_sathi.model.Vendor;
+import com.tiffin_sathi.repository.DeliveryPartnerRepository;
 import com.tiffin_sathi.repository.UserRepository;
 import com.tiffin_sathi.repository.VendorRepository;
 
@@ -40,17 +41,19 @@ public class JwtService {
 
     @Value("${security.jwt.refresh-expiration-time}")
     private long refreshExpiration;
-    
+
     @Autowired
-    private UserRepository userRepository; 
-    
+    private UserRepository userRepository;
+
     @Autowired
     private VendorRepository vendorRepository;
 
-    
+    @Autowired
+    private DeliveryPartnerRepository deliveryPartnerRepository;
+
     @Autowired
     private JavaMailSender mailSender;
-    
+
     @Autowired
     private PasswordEncoder passwordEncoder;
 
@@ -64,7 +67,7 @@ public class JwtService {
     }
 
     public String extractEmail(String token) {
-        return extractClaim(token, Claims::getSubject); // Subject is email
+        return extractClaim(token, Claims::getSubject);
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
@@ -84,7 +87,7 @@ public class JwtService {
         }
     }
 
-    // ---------------- Token Generation ----------------
+    // ---------------- Token Generation for UserDetails ----------------
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> extraClaims = new HashMap<>();
 
@@ -96,6 +99,11 @@ public class JwtService {
             extraClaims.put("role", vendor.getRole().name());
             extraClaims.put("email", vendor.getBusinessEmail());
             extraClaims.put("vendorId", vendor.getVendorId());
+        } else if (userDetails instanceof DeliveryPartner deliveryPartner) {
+            extraClaims.put("role", "DELIVERY");
+            extraClaims.put("email", deliveryPartner.getEmail());
+            extraClaims.put("partnerId", deliveryPartner.getPartnerId());
+            extraClaims.put("vendorId", deliveryPartner.getVendor().getVendorId());
         }
 
         return generateToken(extraClaims, userDetails, jwtExpiration);
@@ -110,17 +118,102 @@ public class JwtService {
         } else if (userDetails instanceof Vendor vendor) {
             extraClaims.put("role", vendor.getRole().name());
             extraClaims.put("email", vendor.getBusinessEmail());
+        } else if (userDetails instanceof DeliveryPartner deliveryPartner) {
+            extraClaims.put("role", "DELIVERY");
+            extraClaims.put("email", deliveryPartner.getEmail());
         }
 
         return generateToken(extraClaims, userDetails, refreshExpiration);
     }
 
+    // ---------------- Token Generation for Specific Types ----------------
+    public String generateToken(User user) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("role", user.getRole().name());
+        claims.put("email", user.getEmail());
+        claims.put("userId", user.getId());
+        return createToken(claims, user.getEmail());
+    }
+
+    public String generateToken(Vendor vendor) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("role", vendor.getRole().name());
+        claims.put("email", vendor.getBusinessEmail());
+        claims.put("vendorId", vendor.getVendorId());
+        return createToken(claims, vendor.getBusinessEmail());
+    }
+
+    public String generateToken(DeliveryPartner deliveryPartner) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("role", "DELIVERY");
+        claims.put("email", deliveryPartner.getEmail());
+        claims.put("partnerId", deliveryPartner.getPartnerId());
+        claims.put("vendorId", deliveryPartner.getVendor().getVendorId());
+        return createToken(claims, deliveryPartner.getEmail());
+    }
+
+    public String generateRefreshToken(User user) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("role", user.getRole().name());
+        claims.put("email", user.getEmail());
+        return createRefreshToken(claims, user.getEmail());
+    }
+
+    public String generateRefreshToken(Vendor vendor) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("role", vendor.getRole().name());
+        claims.put("email", vendor.getBusinessEmail());
+        return createRefreshToken(claims, vendor.getBusinessEmail());
+    }
+
+    public String generateRefreshToken(DeliveryPartner deliveryPartner) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("role", "DELIVERY");
+        claims.put("email", deliveryPartner.getEmail());
+        return createRefreshToken(claims, deliveryPartner.getEmail());
+    }
+
+    // ---------------- Private Token Creation Methods ----------------
     private String generateToken(Map<String, Object> extraClaims, UserDetails userDetails, long expirationTime) {
+
+        String subject;
+
+        if (userDetails instanceof User user) {
+            subject = user.getEmail();
+        } else if (userDetails instanceof Vendor vendor) {
+            subject = vendor.getBusinessEmail();
+        } else if (userDetails instanceof DeliveryPartner partner) {
+            subject = partner.getEmail();
+        } else {
+            subject = userDetails.getUsername();
+        }
+
         return Jwts.builder()
                 .setClaims(extraClaims)
-                .setSubject(userDetails.getUsername()) // username is email
+                .setSubject(subject)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expirationTime))
+                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+
+    private String createToken(Map<String, Object> claims, String subject) {
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(subject)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
+                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    private String createRefreshToken(Map<String, Object> claims, String subject) {
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(subject)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + refreshExpiration))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -159,12 +252,14 @@ public class JwtService {
     public long getRefreshExpiration() {
         return refreshExpiration;
     }
-    
- // ------------------ Send OTP ------------------
+
+    // ------------------ Send OTP ------------------
     public String sendOtp(String email) {
-        // Lookup in both repositories
-        if (!userRepository.findByEmail(email).isPresent() && !vendorRepository.findByBusinessEmail(email).isPresent()) {
-            throw new RuntimeException("User or Vendor not found");
+        // Lookup in all repositories
+        if (!userRepository.findByEmail(email).isPresent() &&
+                !vendorRepository.findByBusinessEmail(email).isPresent() &&
+                !deliveryPartnerRepository.findByEmail(email).isPresent()) {
+            throw new RuntimeException("User, Vendor, or Delivery Partner not found");
         }
 
         String otp = String.valueOf((int) (Math.random() * 900000) + 100000); // 6-digit OTP
@@ -215,7 +310,7 @@ public class JwtService {
                 throw new RuntimeException("Invalid token for email");
             }
 
-            // Update password for User or Vendor
+            // Update password for User, Vendor, or DeliveryPartner
             if (userRepository.findByEmail(email).isPresent()) {
                 User user = userRepository.findByEmail(email).get();
                 user.setPassword(passwordEncoder.encode(newPassword));
@@ -224,13 +319,16 @@ public class JwtService {
                 Vendor vendor = vendorRepository.findByBusinessEmail(email).get();
                 vendor.setPassword(passwordEncoder.encode(newPassword));
                 vendorRepository.save(vendor);
+            } else if (deliveryPartnerRepository.findByEmail(email).isPresent()) {
+                DeliveryPartner deliveryPartner = deliveryPartnerRepository.findByEmail(email).get();
+                deliveryPartner.setPassword(passwordEncoder.encode(newPassword));
+                deliveryPartnerRepository.save(deliveryPartner);
             } else {
-                throw new RuntimeException("User or Vendor not found");
+                throw new RuntimeException("User, Vendor, or Delivery Partner not found");
             }
 
         } catch (Exception e) {
             throw new RuntimeException("Invalid or expired token");
         }
     }
-
 }

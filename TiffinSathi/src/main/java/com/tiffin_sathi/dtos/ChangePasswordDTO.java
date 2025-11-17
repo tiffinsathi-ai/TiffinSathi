@@ -13,6 +13,14 @@ public class ChangePasswordDTO {
     @NotBlank(message = "Confirm password is required")
     private String confirmPassword;
 
+    public ChangePasswordDTO() {}
+
+    public ChangePasswordDTO(String currentPassword, String newPassword, String confirmPassword) {
+        this.currentPassword = currentPassword;
+        this.newPassword = newPassword;
+        this.confirmPassword = confirmPassword;
+    }
+
     // Getters and setters
     public String getCurrentPassword() {
         return currentPassword;
