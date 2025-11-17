@@ -2,6 +2,7 @@ package com.tiffin_sathi.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -32,22 +33,52 @@ public class SecurityConfiguration {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints (no authentication)
+                        // Public endpoints (no authentication required)
                         .requestMatchers("/auth/**").permitAll()
 
-                        // Role-based access using hasRole (it automatically adds ROLE_ prefix)
+                        // Public meal packages endpoints (no authentication)
+                        .requestMatchers(HttpMethod.GET, "/api/meal-packages").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/meal-packages/**").permitAll()
+
+                        // Public meal sets endpoints (no authentication)
+                        .requestMatchers(HttpMethod.GET, "/api/meal-sets").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/meal-sets/**").permitAll()
+
+                        // Vendor management endpoints
+                        .requestMatchers("/api/vendors/status/**").hasRole("ADMIN")
+                        .requestMatchers("/api/vendors").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/vendors/{vendorId}/status").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/vendors/{vendorId}").hasAnyRole("VENDOR", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/vendors/{vendorId}").hasAnyRole("VENDOR", "ADMIN")
+                        .requestMatchers("/api/vendors/{vendorId}/change-password").hasRole("VENDOR")
+
+                        // User management endpoints
+                        .requestMatchers("/api/users").hasRole("ADMIN")
+                        .requestMatchers("/api/users/{userId}/status").hasRole("ADMIN")
+                        .requestMatchers("/api/users/{userId}/role").hasRole("ADMIN")
+                        .requestMatchers("/api/users/{userId}/change-password").hasRole("USER")
+
+                        // Delivery partners endpoints - VENDOR only
+                        .requestMatchers("/api/delivery-partners/**").hasRole("VENDOR")
+                        .requestMatchers("/api/delivery-partners/vendor/**").hasRole("VENDOR")
+
+                        // Delivery partner self-management endpoints
+                        .requestMatchers("/api/delivery/change-password").hasRole("DELIVERY")
+                        .requestMatchers("/api/delivery/profile").hasRole("DELIVERY")
+
+                        // Meal sets vendor endpoints - VENDOR only
+                        .requestMatchers(HttpMethod.POST, "/api/meal-sets").hasRole("VENDOR")
+                        .requestMatchers("/api/meal-sets/vendor/**").hasRole("VENDOR")
+
+                        // Meal packages vendor endpoints - VENDOR only
+                        .requestMatchers(HttpMethod.POST, "/api/meal-packages").hasRole("VENDOR")
+                        .requestMatchers("/api/meal-packages/vendor/**").hasRole("VENDOR")
+
+                        // Role-based access for general endpoints
                         .requestMatchers("/vendor/**").hasRole("VENDOR")
                         .requestMatchers("/user/**").hasRole("USER")
                         .requestMatchers("/delivery/**").hasRole("DELIVERY")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
-
-                        // User management endpoints
-                        .requestMatchers("/api/users").hasRole("ADMIN")
-                        .requestMatchers("/api/users/**").hasAnyRole("USER", "ADMIN")
-
-                        // Vendor management endpoints
-                        .requestMatchers("/api/vendors").hasRole("ADMIN")
-                        .requestMatchers("/api/vendors/**").hasAnyRole("VENDOR", "ADMIN")
 
                         // Any other request requires authentication
                         .anyRequest().authenticated()

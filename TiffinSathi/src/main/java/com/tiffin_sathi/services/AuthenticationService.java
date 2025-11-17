@@ -4,6 +4,7 @@ import com.tiffin_sathi.dtos.LoginRequest;
 import com.tiffin_sathi.dtos.SignupRequest;
 import com.tiffin_sathi.dtos.VendorSignupRequest;
 import com.tiffin_sathi.model.*;
+import com.tiffin_sathi.repository.DeliveryPartnerRepository;
 import com.tiffin_sathi.repository.UserRepository;
 import com.tiffin_sathi.repository.VendorRepository;
 
@@ -27,14 +28,17 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
+    private final DeliveryPartnerRepository deliveryPartnerRepository;
 
     public AuthenticationService(UserRepository userRepository,
                                  VendorRepository vendorRepository,
                                  AuthenticationManager authenticationManager,
                                  PasswordEncoder passwordEncoder,
+                                 DeliveryPartnerRepository deliveryPartnerRepository,
                                  EmailService emailService) {
         this.userRepository = userRepository;
         this.vendorRepository = vendorRepository;
+        this.deliveryPartnerRepository = deliveryPartnerRepository;
         this.authenticationManager = authenticationManager;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
@@ -108,8 +112,6 @@ public class AuthenticationService {
                 savedVendor.getBusinessName(),
                 tempPassword
         );
-        // Save vendor (ONLY ONCE)
-        Vendor savedVendor = vendorRepository.save(vendor);
 
         // Send emails after save
         sendEmails(savedVendor);
@@ -145,9 +147,6 @@ public class AuthenticationService {
         );
     }
 
-
-    
-
     // -------- Authenticate both User and Vendor --------
     public Object authenticate(LoginRequest input) {
         // Perform authentication
@@ -176,7 +175,16 @@ public class AuthenticationService {
             return vendor;
         }
 
-        throw new RuntimeException("User or Vendor not found");
+        // Try finding delivery partner
+        DeliveryPartner deliveryPartner = deliveryPartnerRepository.findByEmail(input.email()).orElse(null);
+        if (deliveryPartner != null) {
+            if (!deliveryPartner.getIsActive()) {
+                throw new RuntimeException("Delivery partner account is not active");
+            }
+            return deliveryPartner;
+        }
+
+        throw new RuntimeException("User, Vendor, or Delivery Partner not found");
     }
     // Generate temporary password
     private String generateTempPassword() {
