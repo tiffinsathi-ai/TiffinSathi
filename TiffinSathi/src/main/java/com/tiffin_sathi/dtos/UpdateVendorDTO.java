@@ -15,4 +15,5 @@ public class UpdateVendorDTO {
     private Integer capacity;
     private String description;
     private String businessImage; // Changed to String for base64/URL
+
 }
