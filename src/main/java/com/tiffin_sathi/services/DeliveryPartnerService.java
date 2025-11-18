@@ -56,7 +56,6 @@ public class DeliveryPartnerService {
         deliveryPartner.setAddress(createDeliveryPartnerDTO.getAddress());
         deliveryPartner.setLicenseNumber(createDeliveryPartnerDTO.getLicenseNumber());
         deliveryPartner.setProfilePicture(createDeliveryPartnerDTO.getProfilePicture());
-        deliveryPartner.setProfilePictureUrl(createDeliveryPartnerDTO.getProfilePictureUrl());
         deliveryPartner.setIsActive(createDeliveryPartnerDTO.getIsActive());
 
         // Generate temporary password and encode it
@@ -193,9 +192,6 @@ public class DeliveryPartnerService {
         if (updateDeliveryPartnerDTO.getProfilePicture() != null) {
             partner.setProfilePicture(updateDeliveryPartnerDTO.getProfilePicture());
         }
-        if (updateDeliveryPartnerDTO.getProfilePictureUrl() != null) {
-            partner.setProfilePictureUrl(updateDeliveryPartnerDTO.getProfilePictureUrl());
-        }
         if (updateDeliveryPartnerDTO.getIsActive() != null) {
             partner.setIsActive(updateDeliveryPartnerDTO.getIsActive());
         }
@@ -220,15 +216,12 @@ public class DeliveryPartnerService {
     }
 
     @Transactional
-    public DeliveryPartnerDTO updateProfilePicture(Long partnerId, Long vendorId, byte[] profilePicture, String profilePictureUrl) {
+    public DeliveryPartnerDTO updateProfilePicture(Long partnerId, Long vendorId, String profilePicture, String profilePictureUrl) {
         DeliveryPartner partner = deliveryPartnerRepository.findByPartnerIdAndVendorVendorId(partnerId, vendorId)
                 .orElseThrow(() -> new RuntimeException("Delivery partner not found or you don't have permission to update it"));
 
         if (profilePicture != null) {
             partner.setProfilePicture(profilePicture);
-        }
-        if (profilePictureUrl != null) {
-            partner.setProfilePictureUrl(profilePictureUrl);
         }
 
         DeliveryPartner updatedPartner = deliveryPartnerRepository.save(partner);
@@ -241,7 +234,6 @@ public class DeliveryPartnerService {
                 .orElseThrow(() -> new RuntimeException("Delivery partner not found or you don't have permission to update it"));
 
         partner.setProfilePicture(null);
-        partner.setProfilePictureUrl(null);
 
         deliveryPartnerRepository.save(partner);
     }
@@ -256,6 +248,33 @@ public class DeliveryPartnerService {
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
+
+    public DeliveryPartnerDTO getDeliveryPartnerByEmail(String email) {
+        DeliveryPartner deliveryPartner = deliveryPartnerRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Delivery partner not found with email: " + email));
+        return convertToDTO(deliveryPartner);
+    }
+
+    public DeliveryPartnerDTO updateDeliveryPartnerSelf(String email, UpdateDeliveryPartnerDTO dto) {
+        DeliveryPartner partner = deliveryPartnerRepository
+                .findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Delivery partner not found"));
+
+        partner.setName(dto.getName());
+        partner.setPhoneNumber(dto.getPhoneNumber());
+        partner.setAddress(dto.getAddress());
+        partner.setVehicleInfo(dto.getVehicleInfo());
+        partner.setLicenseNumber(dto.getLicenseNumber());
+
+        if (dto.getProfilePicture() != null) {
+            partner.setProfilePicture(dto.getProfilePicture());
+        }
+
+        deliveryPartnerRepository.save(partner);
+
+        return convertToDTO(partner);
+    }
+
 
     // Generate temporary password
     private String generateTempPassword() {
@@ -278,7 +297,6 @@ public class DeliveryPartnerService {
         dto.setAddress(partner.getAddress());
         dto.setLicenseNumber(partner.getLicenseNumber());
         dto.setProfilePicture(partner.getProfilePicture());
-        dto.setProfilePictureUrl(partner.getProfilePictureUrl());
         dto.setIsActive(partner.getIsActive());
         dto.setVendorId(partner.getVendor().getVendorId());
         dto.setVendorName(partner.getVendor().getBusinessName());

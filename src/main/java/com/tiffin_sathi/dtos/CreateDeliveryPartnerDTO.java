@@ -17,7 +17,7 @@ public class CreateDeliveryPartnerDTO {
     private String email;
     private String address;
     private String licenseNumber;
-    private byte[] profilePicture;
+    private String profilePicture;
     private String profilePictureUrl;
 
     @NotNull(message = "Active status is required")
@@ -42,8 +42,8 @@ public class CreateDeliveryPartnerDTO {
     public String getLicenseNumber() { return licenseNumber; }
     public void setLicenseNumber(String licenseNumber) { this.licenseNumber = licenseNumber; }
 
-    public byte[] getProfilePicture() { return profilePicture; }
-    public void setProfilePicture(byte[] profilePicture) { this.profilePicture = profilePicture; }
+    public String getProfilePicture() { return profilePicture; }
+    public void setProfilePicture(String profilePicture) { this.profilePicture = profilePicture; }
 
     public String getProfilePictureUrl() { return profilePictureUrl; }
     public void setProfilePictureUrl(String profilePictureUrl) { this.profilePictureUrl = profilePictureUrl; }

@@ -49,11 +49,8 @@ public class DeliveryPartner implements UserDetails {
     private String licenseNumber;
 
     @Lob
-    @Column(name = "profile_picture")
-    private byte[] profilePicture;
-
-    @Column(name = "profile_picture_url")
-    private String profilePictureUrl;
+    @Column(name = "profile_picture", columnDefinition = "LONGTEXT")
+    private String profilePicture;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -128,11 +125,8 @@ public class DeliveryPartner implements UserDetails {
     public String getLicenseNumber() { return licenseNumber; }
     public void setLicenseNumber(String licenseNumber) { this.licenseNumber = licenseNumber; }
 
-    public byte[] getProfilePicture() { return profilePicture; }
-    public void setProfilePicture(byte[] profilePicture) { this.profilePicture = profilePicture; }
-
-    public String getProfilePictureUrl() { return profilePictureUrl; }
-    public void setProfilePictureUrl(String profilePictureUrl) { this.profilePictureUrl = profilePictureUrl; }
+    public String getProfilePicture() { return profilePicture; }
+    public void setProfilePicture(String profilePicture) { this.profilePicture = profilePicture; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
