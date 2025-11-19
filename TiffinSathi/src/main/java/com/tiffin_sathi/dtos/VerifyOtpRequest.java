@@ -4,6 +4,8 @@ public class VerifyOtpRequest {
     private String email;
     private String otp;
     private String token; // JWT token received from server
+
+
 	public String getEmail() {
 		return email;
 	}
