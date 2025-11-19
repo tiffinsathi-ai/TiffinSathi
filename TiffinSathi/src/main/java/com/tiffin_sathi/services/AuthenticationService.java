@@ -112,6 +112,7 @@ public class AuthenticationService {
                 savedVendor.getBusinessName(),
                 tempPassword
         );
+        
 
         // Send emails after save
         sendEmails(savedVendor);
