@@ -46,12 +46,11 @@ public class MealPackageService {
         mealPackage.setPricePerSet(createMealPackageDTO.getPricePerSet());
         mealPackage.setFeatures(createMealPackageDTO.getFeatures());
         mealPackage.setImage(createMealPackageDTO.getImage());
-        mealPackage.setImageUrl(createMealPackageDTO.getImageUrl());
         mealPackage.setVendor(vendor);
 
-        // Validate that at least 7 meal sets are provided
-        if (createMealPackageDTO.getPackageSets() == null || createMealPackageDTO.getPackageSets().size() < 7) {
-            throw new RuntimeException("At least 7 meal sets are required for a meal package");
+        // CHANGED: Only require at least 1 meal set (removed the 7-meal-set requirement)
+        if (createMealPackageDTO.getPackageSets() == null || createMealPackageDTO.getPackageSets().isEmpty()) {
+            throw new RuntimeException("At least one meal set is required for a meal package");
         }
 
         MealPackage savedMealPackage = mealPackageRepository.save(mealPackage);
@@ -122,18 +121,15 @@ public class MealPackageService {
         if (updateMealPackageDTO.getImage() != null) {
             mealPackage.setImage(updateMealPackageDTO.getImage());
         }
-        if (updateMealPackageDTO.getImageUrl() != null) {
-            mealPackage.setImageUrl(updateMealPackageDTO.getImageUrl());
-        }
         if (updateMealPackageDTO.getIsAvailable() != null) {
             mealPackage.setIsAvailable(updateMealPackageDTO.getIsAvailable());
         }
 
         // Update package sets if provided
         if (updateMealPackageDTO.getPackageSets() != null) {
-            // Validate that at least 7 meal sets are provided
-            if (updateMealPackageDTO.getPackageSets().size() < 7) {
-                throw new RuntimeException("At least 7 meal sets are required for a meal package");
+            // CHANGED: Only require at least 1 meal set (removed the 7-meal-set requirement)
+            if (updateMealPackageDTO.getPackageSets().isEmpty()) {
+                throw new RuntimeException("At least one meal set is required for a meal package");
             }
 
             // Delete existing package sets
@@ -210,7 +206,7 @@ public class MealPackageService {
         dto.setBasePackageType(mealPackage.getBasePackageType());
         dto.setPricePerSet(mealPackage.getPricePerSet());
         dto.setFeatures(mealPackage.getFeatures());
-        dto.setImageUrl(mealPackage.getImageUrl());
+        dto.setImage(mealPackage.getImage()); // Make sure this is included
         dto.setIsAvailable(mealPackage.getIsAvailable());
         dto.setVendorId(mealPackage.getVendor().getVendorId());
         dto.setVendorName(mealPackage.getVendor().getBusinessName());

@@ -39,8 +39,8 @@ public class User implements UserDetails {
     private Status status = Status.ACTIVE;
 
     @Lob
-    @Column(columnDefinition = "LONGBLOB")
-    private byte[] profilePicture;
+    @Column(columnDefinition = "LONGTEXT")
+    private String profilePicture;
 
    
     @CreationTimestamp
@@ -142,11 +142,11 @@ public class User implements UserDetails {
         this.phoneNumber = phoneNumber;
     }
 
-    public byte[] getProfilePicture() {
+    public String getProfilePicture() {
         return profilePicture;
     }
 
-    public void setProfilePicture(byte[] profilePicture) {
+    public void setProfilePicture(String profilePicture) {
         this.profilePicture = profilePicture;
     }
 

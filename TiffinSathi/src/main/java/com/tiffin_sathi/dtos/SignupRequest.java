@@ -5,5 +5,5 @@ public record SignupRequest(
         String password,
         String userName,
         String phoneNumber,       // optional
-        byte[] profilePicture     // optional, can be null if no file uploaded
+        String profilePicture     // optional, can be null if no file uploaded
 ) {}

@@ -29,6 +29,8 @@ public class EmailService {
                 "Email: " + vendorEmail + "\n" +
                 "Temporary Password: " + tempPassword + "\n\n" +
                 "Status: PENDING\n\n" +
+                "Your request to join our platform has been submitted."+ "\n" +
+                "We will review your application and notify you soon.\n\n" +
                 "Best regards,\nTiffin Sathi Team");
         mailSender.send(message);
     }

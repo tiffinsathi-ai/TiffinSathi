@@ -1,6 +1,8 @@
 package com.tiffin_sathi.controller;
 
 import com.tiffin_sathi.dtos.ChangePasswordDTO;
+import com.tiffin_sathi.dtos.DeliveryPartnerDTO;
+import com.tiffin_sathi.dtos.UpdateDeliveryPartnerDTO;
 import com.tiffin_sathi.services.DeliveryPartnerService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +26,19 @@ public class DeliveryPartnerSelfController {
         return authentication.getName(); // This returns the email (username)
     }
 
+    @GetMapping("/profile")
+    @PreAuthorize("hasRole('DELIVERY')")
+    public ResponseEntity<?> getMyProfile() {
+        try {
+            String email = getCurrentDeliveryPartnerEmail();
+            // Get delivery partner by email
+            DeliveryPartnerDTO deliveryPartner = deliveryPartnerService.getDeliveryPartnerByEmail(email);
+            return ResponseEntity.ok(deliveryPartner);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @PostMapping("/change-password")
     @PreAuthorize("hasRole('DELIVERY')")
     public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordDTO changePasswordDTO) {
@@ -36,16 +51,16 @@ public class DeliveryPartnerSelfController {
         }
     }
 
-    @GetMapping("/profile")
+    @PutMapping("/profile")
     @PreAuthorize("hasRole('DELIVERY')")
-    public ResponseEntity<?> getMyProfile() {
+    public ResponseEntity<?> updateMyProfile(@Valid @RequestBody UpdateDeliveryPartnerDTO dto) {
         try {
             String email = getCurrentDeliveryPartnerEmail();
-            // You can add a method to get delivery partner profile by email
-            // For now, returning a simple response
-            return ResponseEntity.ok("Profile endpoint for: " + email);
+            DeliveryPartnerDTO updated = deliveryPartnerService.updateDeliveryPartnerSelf(email, dto);
+            return ResponseEntity.ok(updated);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
 }

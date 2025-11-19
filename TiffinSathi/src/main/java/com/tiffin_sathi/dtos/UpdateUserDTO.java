@@ -5,7 +5,7 @@ public class UpdateUserDTO {
 
     private String userName;
     private String phoneNumber;
-    private byte[] profilePicture;
+    private String profilePicture;
 
     // ------------------------
     // Constructors
@@ -14,7 +14,7 @@ public class UpdateUserDTO {
     public UpdateUserDTO() {
     }
 
-    public UpdateUserDTO(String userName, String email, String password, String phoneNumber, byte[] profilePicture) {
+    public UpdateUserDTO(String userName, String email, String password, String phoneNumber, String profilePicture) {
         this.userName = userName;
         this.phoneNumber = phoneNumber;
         this.profilePicture = profilePicture;
@@ -41,11 +41,11 @@ public class UpdateUserDTO {
         this.phoneNumber = phoneNumber;
     }
 
-    public byte[] getProfilePicture() {
+    public String getProfilePicture() {
         return profilePicture;
     }
 
-    public void setProfilePicture(byte[] profilePicture) {
+    public void setProfilePicture(String profilePicture) {
         this.profilePicture = profilePicture;
     }
 }

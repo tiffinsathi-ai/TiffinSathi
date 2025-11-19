@@ -9,8 +9,7 @@ public class UpdateMealPackageDTO {
     private String basePackageType;
     private Double pricePerSet;
     private String features;
-    private byte[] image;
-    private String imageUrl;
+    private String image;
     private Boolean isAvailable;
     private List<PackageSetDTO> packageSets;
 
@@ -30,11 +29,8 @@ public class UpdateMealPackageDTO {
     public String getFeatures() { return features; }
     public void setFeatures(String features) { this.features = features; }
 
-    public byte[] getImage() { return image; }
-    public void setImage(byte[] image) { this.image = image; }
-
-    public String getImageUrl() { return imageUrl; }
-    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public String getImage() { return image; }
+    public void setImage(String image) { this.image = image; }
 
     public Boolean getIsAvailable() { return isAvailable; }
     public void setIsAvailable(Boolean isAvailable) { this.isAvailable = isAvailable; }
