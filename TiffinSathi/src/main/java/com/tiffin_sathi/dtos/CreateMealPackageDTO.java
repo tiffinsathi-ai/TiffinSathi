@@ -26,8 +26,7 @@ public class CreateMealPackageDTO {
     private Double pricePerSet;
 
     private String features;
-    private byte[] image;
-    private String imageUrl;
+    private String image;
 
     @NotNull(message = "At least one meal set is required")
     private List<PackageSetDTO> packageSets;
@@ -51,11 +50,8 @@ public class CreateMealPackageDTO {
     public String getFeatures() { return features; }
     public void setFeatures(String features) { this.features = features; }
 
-    public byte[] getImage() { return image; }
-    public void setImage(byte[] image) { this.image = image; }
-
-    public String getImageUrl() { return imageUrl; }
-    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public String getImage() { return image; }
+    public void setImage(String image) { this.image = image; }
 
     public List<PackageSetDTO> getPackageSets() { return packageSets; }
     public void setPackageSets(List<PackageSetDTO> packageSets) { this.packageSets = packageSets; }

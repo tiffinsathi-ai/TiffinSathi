@@ -10,7 +10,7 @@ public class MealPackageDTO {
     private String basePackageType;
     private Double pricePerSet;
     private String features;
-    private String imageUrl;
+    private String image;
     private Boolean isAvailable;
     private Long vendorId;
     private String vendorName;
@@ -35,9 +35,6 @@ public class MealPackageDTO {
     public String getFeatures() { return features; }
     public void setFeatures(String features) { this.features = features; }
 
-    public String getImageUrl() { return imageUrl; }
-    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
-
     public Boolean getIsAvailable() { return isAvailable; }
     public void setIsAvailable(Boolean isAvailable) { this.isAvailable = isAvailable; }
 
@@ -49,4 +46,8 @@ public class MealPackageDTO {
 
     public List<PackageSetDTO> getPackageSets() { return packageSets; }
     public void setPackageSets(List<PackageSetDTO> packageSets) { this.packageSets = packageSets; }
+
+    public String getImage() { return image;}
+
+    public void setImage(String image) { this.image = image;}
 }
