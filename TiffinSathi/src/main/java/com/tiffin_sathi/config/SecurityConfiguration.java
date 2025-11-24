@@ -35,6 +35,7 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints (no authentication required)
                         .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/api/esewa/**").permitAll()
 
                         // Public meal packages endpoints (no authentication)
                         .requestMatchers(HttpMethod.GET, "/api/meal-packages").permitAll()

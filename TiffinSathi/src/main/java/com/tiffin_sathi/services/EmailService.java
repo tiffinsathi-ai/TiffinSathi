@@ -27,7 +27,7 @@ public class EmailService {
                 "Thank you for registering your business '" + businessName + "' with Tiffin Sathi!\n\n" +
                 "Temporary Login Credentials:\n" +
                 "Email: " + vendorEmail + "\n" +
-                "Temporary Password: " + tempPassword + "\n\n" +
+                "Temporary Password: " + tempPassword + "This will only work after approval\n\n" +
                 "Status: PENDING\n\n" +
                 "Your request to join our platform has been submitted."+ "\n" +
                 "We will review your application and notify you soon.\n\n" +
