@@ -63,4 +63,15 @@ public class DeliveryPartnerSelfController {
         }
     }
 
+    @PutMapping("/availability")
+    @PreAuthorize("hasRole('DELIVERY')")
+    public ResponseEntity<?> toggleAvailability() {
+        try {
+            String email = getCurrentDeliveryPartnerEmail();
+            String message = deliveryPartnerService.toggleAvailability(email);
+            return ResponseEntity.ok(message);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

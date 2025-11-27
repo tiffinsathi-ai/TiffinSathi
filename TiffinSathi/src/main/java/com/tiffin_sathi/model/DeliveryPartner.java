@@ -60,6 +60,16 @@ public class DeliveryPartner implements UserDetails {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "availability_status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private AvailabilityStatus availabilityStatus = AvailabilityStatus.AVAILABLE;
+
+    public enum AvailabilityStatus {
+        AVAILABLE,
+        BUSY,
+        OFFLINE
+    }
+
     // Constructors
     public DeliveryPartner() {}
 
@@ -133,4 +143,20 @@ public class DeliveryPartner implements UserDetails {
 
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Boolean getActive() {
+        return isActive;
+    }
+
+    public void setActive(Boolean active) {
+        isActive = active;
+    }
+
+    public AvailabilityStatus getAvailabilityStatus() {
+        return availabilityStatus;
+    }
+
+    public void setAvailabilityStatus(AvailabilityStatus availabilityStatus) {
+        this.availabilityStatus = availabilityStatus;
+    }
 }

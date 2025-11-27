@@ -1,5 +1,6 @@
 package com.tiffin_sathi.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -8,7 +9,9 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 @Entity
@@ -18,7 +21,6 @@ public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
     private String userName;
 
     @Column(unique = true, nullable = false)
@@ -26,14 +28,13 @@ public class User implements UserDetails {
 
     @Column(nullable = false)
     private String password;
-    
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role = Role.USER;
 
-
     private String phoneNumber;
-    
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Status status = Status.ACTIVE;
@@ -42,7 +43,6 @@ public class User implements UserDetails {
     @Column(columnDefinition = "LONGTEXT")
     private String profilePicture;
 
-   
     @CreationTimestamp
     @Column(updatable = false, name = "created_at")
     private LocalDateTime createdAt;
@@ -51,22 +51,26 @@ public class User implements UserDetails {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    // Add subscription relationship
+    @JsonIgnore
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<Subscription> subscriptions = new ArrayList<>();
+
     // ------------------------
     // Constructors
     // ------------------------
 
+    public User() {}
 
-    public User() {
-    	
-    this.email = email;
-    this.password = password;
-    this.userName = userName;
-    this.role = role != null ? role : Role.USER;        // default if null
-    this.phoneNumber = phoneNumber;
-    this.status = status != null ? status : Status.ACTIVE; // default if null
-    this.profilePicture = profilePicture;
-    
+    public User(String email, String password, String userName, String phoneNumber) {
+        this.email = email;
+        this.password = password;
+        this.userName = userName;
+        this.phoneNumber = phoneNumber;
+        this.role = Role.USER;
+        this.status = Status.ACTIVE;
     }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
@@ -94,7 +98,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return status == Status.ACTIVE;
     }
 
     // ------------------------
@@ -117,24 +121,23 @@ public class User implements UserDetails {
         this.email = email;
     }
 
+    public String getPassword() {
+        return password;
+    }
+
     public void setPassword(String password) {
         this.password = password;
     }
 
-    public String getPassword() {
-		return password;
-	}
-
-
     public String getUserName() {
-		return userName;
-	}
+        return userName;
+    }
 
-	public void setUserName(String userName) {
-		this.userName = userName;
-	}
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
 
-	public String getPhoneNumber() {
+    public String getPhoneNumber() {
         return phoneNumber;
     }
 
@@ -158,6 +161,14 @@ public class User implements UserDetails {
         this.role = role;
     }
 
+    public Status getStatus() {
+        return status;
+    }
+
+    public void setStatus(Status status) {
+        this.status = status;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -174,17 +185,15 @@ public class User implements UserDetails {
         this.updatedAt = updatedAt;
     }
 
-	public Status getStatus() {
-		return status;
-	}
+    public List<Subscription> getSubscriptions() {
+        return subscriptions;
+    }
 
-	public void setStatus(Status status) {
-		this.status = status;
-	}
+    public void setSubscriptions(List<Subscription> subscriptions) {
+        this.subscriptions = subscriptions;
+    }
 
-	
-
-	
-
- 
+    public String getUserId() {
+        return String.valueOf(this.id);
+    }
 }

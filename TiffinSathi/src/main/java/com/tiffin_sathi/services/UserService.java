@@ -1,5 +1,6 @@
 package com.tiffin_sathi.services;
 
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,7 +20,7 @@ public class UserService {
 
     @Autowired
     private UserRepository userRepository;
-    
+
     @Autowired
     private VendorRepository vendorRepository;
 
@@ -68,7 +69,7 @@ public class UserService {
         userRepository.delete(user);
     }
 
- // Change password for User
+    // Change password for User
     public String changeUserPassword(Long userId, String currentPassword, String newPassword, String confirmPassword) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
@@ -94,7 +95,7 @@ public class UserService {
     private String changePasswordLogic(String existingPassword, String currentPassword,
                                        String newPassword, String confirmPassword,
                                        java.util.function.Consumer<String> saveFunction) {
-    	
+
         // Verify current password
         if (!passwordEncoder.matches(currentPassword, existingPassword)) {
             throw new RuntimeException("Current password is incorrect");
@@ -120,5 +121,38 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
         user.setRole(role);
         return userRepository.save(user);
+    }
+
+    @Transactional
+    public User findOrCreateUser(String phoneNumber, String fullName, String email) {
+        // Try to find user by phone number
+        Optional<User> existingUser = userRepository.findByPhoneNumber(phoneNumber);
+
+        if (existingUser.isPresent()) {
+            return existingUser.get();
+        }
+
+        // Create new user
+        User newUser = new User();
+        newUser.setUserName(fullName);
+        newUser.setPhoneNumber(phoneNumber);
+        newUser.setEmail(email != null ? email : phoneNumber + "@tiffinsathi.com");
+
+        // Generate a random password for the user
+        String tempPassword = generateTempPassword();
+        newUser.setPassword(passwordEncoder.encode(tempPassword));
+        newUser.setRole(Role.USER);
+        newUser.setStatus(Status.ACTIVE);
+
+        return userRepository.save(newUser);
+    }
+    private String generateTempPassword() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        java.util.Random random = new java.util.Random();
+        StringBuilder sb = new StringBuilder(8);
+        for (int i = 0; i < 8; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
     }
 }
