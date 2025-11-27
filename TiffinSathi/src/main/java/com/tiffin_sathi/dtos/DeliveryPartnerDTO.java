@@ -14,11 +14,11 @@ public class DeliveryPartnerDTO {
     private String profilePicture;
     private String profilePictureUrl;
     private Boolean isActive;
+    private String availabilityStatus; // ADDED THIS FIELD
     private Long vendorId;
     private String vendorName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-
     private String tempPassword;
 
     // Getters and Setters
@@ -51,6 +51,10 @@ public class DeliveryPartnerDTO {
 
     public Boolean getIsActive() { return isActive; }
     public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+
+    // ADDED GETTER AND SETTER FOR AVAILABILITY STATUS
+    public String getAvailabilityStatus() { return availabilityStatus; }
+    public void setAvailabilityStatus(String availabilityStatus) { this.availabilityStatus = availabilityStatus; }
 
     public Long getVendorId() { return vendorId; }
     public void setVendorId(Long vendorId) { this.vendorId = vendorId; }

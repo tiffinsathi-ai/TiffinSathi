@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+
 @Service
 public class EmailService {
 
@@ -19,15 +20,13 @@ public class EmailService {
         mailSender.send(message);
     }
 
-    public void sendVendorRegistrationEmail(String vendorEmail, String businessName, String tempPassword) {
+    // Vendor Registration - NO password
+    public void sendVendorRegistrationEmail(String vendorEmail, String businessName) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(vendorEmail);
         message.setSubject("Vendor Registration Received - Tiffin Sathi");
         message.setText("Dear Vendor,\n\n" +
                 "Thank you for registering your business '" + businessName + "' with Tiffin Sathi!\n\n" +
-                "Temporary Login Credentials:\n" +
-                "Email: " + vendorEmail + "\n" +
-                "Temporary Password: " + tempPassword + "\n\n" +
                 "Status: PENDING\n\n" +
                 "Your request to join our platform has been submitted."+ "\n" +
                 "We will review your application and notify you soon.\n\n" +
@@ -35,15 +34,17 @@ public class EmailService {
         mailSender.send(message);
     }
 
+    // Vendor Approval - WITH password
     public void sendVendorApprovalEmail(String vendorEmail, String businessName, String tempPassword) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(vendorEmail);
         message.setSubject("Vendor Account Approved - Tiffin Sathi");
         message.setText("Dear Vendor,\n\n" +
                 "Congratulations! Your vendor account for '" + businessName + "' has been approved!\n\n" +
-                "Login:\n" +
+                "Login Credentials:\n" +
                 "Email: " + vendorEmail + "\n" +
-                "Password: " + tempPassword + "\n\n" +
+                "Temporary Password: " + tempPassword + "\n\n" +
+                "Please login and change your password immediately for security reasons.\n\n" +
                 "Best regards,\nTiffin Sathi Team");
         mailSender.send(message);
     }
@@ -59,7 +60,7 @@ public class EmailService {
         mailSender.send(message);
     }
 
-    // Method for sending delivery partner credentials
+    // Delivery Partner Creation - WITH password
     public void sendDeliveryPartnerCredentials(String deliveryEmail, String name, String tempPassword, String vendorName) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(deliveryEmail);

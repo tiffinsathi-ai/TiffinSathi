@@ -105,7 +105,7 @@ public class UserController {
         }
     }
 
-//     Update user profile by ID
+    //     Update user profile by ID
     @PutMapping("profile/{userId}")
     public ResponseEntity<?> updateUser(@PathVariable Long userId, @Valid @RequestBody UpdateUserDTO updateUserDTO) {
         try {
