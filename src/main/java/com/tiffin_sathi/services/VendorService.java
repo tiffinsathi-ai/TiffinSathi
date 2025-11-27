@@ -41,6 +41,22 @@ public class VendorService {
         return vendorRepository.findByBusinessEmail(email);
     }
 
+    // Add this method to create vendor with temporary password
+    public Vendor createVendor(Vendor vendor, String tempPassword) {
+        // Store the temporary password (unencoded) temporarily if needed
+        // Or generate and store it here
+        vendor.setPassword(passwordEncoder.encode(tempPassword));
+        Vendor savedVendor = vendorRepository.save(vendor);
+
+        // Send registration email WITHOUT password
+        emailService.sendVendorRegistrationEmail(
+                vendor.getBusinessEmail(),
+                vendor.getBusinessName()
+        );
+
+        return savedVendor;
+    }
+
     public Vendor updateVendor(Long vendorId, UpdateVendorDTO updateVendorDTO) {
         try {
             Vendor vendor = vendorRepository.findById(vendorId)
@@ -99,14 +115,18 @@ public class VendorService {
         VendorStatus oldStatus = vendor.getStatus();
         vendor.setStatus(status);
 
-        // If status changed to approved, send approval email (keep existing password)
+        // If status changed to approved, generate new temp password and send approval email
         if (status == VendorStatus.APPROVED && oldStatus != VendorStatus.APPROVED) {
+            // Generate a new temporary password
+            String tempPassword = generateTempPassword();
+            vendor.setPassword(passwordEncoder.encode(tempPassword));
             vendorRepository.save(vendor);
-            // Send approval email - vendor uses the temp password from registration
+
+            // Send approval email WITH the new temporary password
             emailService.sendVendorApprovalEmail(
                     vendor.getBusinessEmail(),
                     vendor.getBusinessName(),
-                    "Use the temporary password sent during registration"
+                    tempPassword
             );
         }
         // If status changed to rejected, send rejection email

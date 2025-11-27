@@ -57,6 +57,7 @@ public class DeliveryPartnerService {
         deliveryPartner.setLicenseNumber(createDeliveryPartnerDTO.getLicenseNumber());
         deliveryPartner.setProfilePicture(createDeliveryPartnerDTO.getProfilePicture());
         deliveryPartner.setIsActive(createDeliveryPartnerDTO.getIsActive());
+        deliveryPartner.setAvailabilityStatus(DeliveryPartner.AvailabilityStatus.AVAILABLE);
 
         // Generate temporary password and encode it
         String tempPassword = generateTempPassword();
@@ -64,12 +65,12 @@ public class DeliveryPartnerService {
 
         DeliveryPartner savedPartner = deliveryPartnerRepository.save(deliveryPartner);
 
-        // Send email with credentials to delivery partner
+        // Send email with credentials to delivery partner (INCLUDING password)
         try {
             emailService.sendDeliveryPartnerCredentials(
                     savedPartner.getEmail(),
                     savedPartner.getName(),
-                    tempPassword,
+                    tempPassword,  // Include the temporary password
                     vendor.getBusinessName()
             );
         } catch (Exception e) {
@@ -122,12 +123,12 @@ public class DeliveryPartnerService {
         partner.setPassword(passwordEncoder.encode(newPassword));
         deliveryPartnerRepository.save(partner);
 
-        // Send email with new password to delivery partner
+        // Send email with new password to delivery partner (INCLUDING password)
         try {
             emailService.sendDeliveryPartnerCredentials(
                     partner.getEmail(),
                     partner.getName(),
-                    newPassword,
+                    newPassword,  // Include the new temporary password
                     partner.getVendor().getBusinessName()
             );
         } catch (Exception e) {
@@ -275,6 +276,25 @@ public class DeliveryPartnerService {
         return convertToDTO(partner);
     }
 
+    public String toggleAvailability(String email) {
+        DeliveryPartner deliveryPartner = deliveryPartnerRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Delivery partner not found"));
+
+        if (deliveryPartner.getAvailabilityStatus() == DeliveryPartner.AvailabilityStatus.AVAILABLE) {
+            deliveryPartner.setAvailabilityStatus(DeliveryPartner.AvailabilityStatus.BUSY);
+        } else {
+            deliveryPartner.setAvailabilityStatus(DeliveryPartner.AvailabilityStatus.AVAILABLE);
+        }
+
+        deliveryPartnerRepository.save(deliveryPartner);
+        return "Availability updated to " + deliveryPartner.getAvailabilityStatus();
+    }
+
+    public List<DeliveryPartner> getAvailableDeliveryPartners(Long vendorId) {
+        return deliveryPartnerRepository.findByVendorVendorIdAndIsActiveTrue(vendorId).stream()
+                .filter(partner -> partner.getAvailabilityStatus() == DeliveryPartner.AvailabilityStatus.AVAILABLE)
+                .collect(Collectors.toList());
+    }
 
     // Generate temporary password
     private String generateTempPassword() {
@@ -298,6 +318,7 @@ public class DeliveryPartnerService {
         dto.setLicenseNumber(partner.getLicenseNumber());
         dto.setProfilePicture(partner.getProfilePicture());
         dto.setIsActive(partner.getIsActive());
+        dto.setAvailabilityStatus(partner.getAvailabilityStatus().name()); // FIXED: Set availability status
         dto.setVendorId(partner.getVendor().getVendorId());
         dto.setVendorName(partner.getVendor().getBusinessName());
         dto.setCreatedAt(partner.getCreatedAt());

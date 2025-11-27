@@ -18,7 +18,6 @@ public class CreateDeliveryPartnerDTO {
     private String address;
     private String licenseNumber;
     private String profilePicture;
-    private String profilePictureUrl;
 
     @NotNull(message = "Active status is required")
     private Boolean isActive = true;
@@ -44,9 +43,6 @@ public class CreateDeliveryPartnerDTO {
 
     public String getProfilePicture() { return profilePicture; }
     public void setProfilePicture(String profilePicture) { this.profilePicture = profilePicture; }
-
-    public String getProfilePictureUrl() { return profilePictureUrl; }
-    public void setProfilePictureUrl(String profilePictureUrl) { this.profilePictureUrl = profilePictureUrl; }
 
     public Boolean getIsActive() { return isActive; }
     public void setIsActive(Boolean isActive) { this.isActive = isActive; }

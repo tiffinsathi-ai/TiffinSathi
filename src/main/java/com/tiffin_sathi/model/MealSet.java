@@ -81,4 +81,8 @@ public class MealSet {
 
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public String getDisplayName() {
+        return this.type != null ? this.type.getDisplayName() : "";
+    }
 }

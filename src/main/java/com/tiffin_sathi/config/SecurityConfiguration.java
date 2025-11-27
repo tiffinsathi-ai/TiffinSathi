@@ -74,6 +74,23 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/api/meal-packages").hasRole("VENDOR")
                         .requestMatchers("/api/meal-packages/vendor/**").hasRole("VENDOR")
 
+                        // Subscription endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/subscriptions").hasRole("USER")
+                        .requestMatchers(HttpMethod.GET, "/api/subscriptions/user").hasRole("USER")
+                        .requestMatchers(HttpMethod.GET, "/api/subscriptions/user/**").hasRole("USER")
+                        .requestMatchers(HttpMethod.GET, "/api/subscriptions/**").hasAnyRole("USER", "VENDOR", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/subscriptions/**").hasAnyRole("USER", "VENDOR", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/subscriptions/**").hasRole("USER")
+                        .requestMatchers(HttpMethod.POST, "/api/payments/**").hasAnyRole("USER", "ADMIN")
+
+                        // Order endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/orders/today").hasAnyRole("VENDOR", "DELIVERY", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/orders/date/**").hasAnyRole("VENDOR", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/orders/status/**").hasAnyRole("VENDOR", "DELIVERY", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/orders/*/status").hasAnyRole("VENDOR", "DELIVERY", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/orders/*/assign-delivery").hasAnyRole("VENDOR", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/orders/delivery/**").hasRole("DELIVERY")
+
                         // Role-based access for general endpoints
                         .requestMatchers("/vendor/**").hasRole("VENDOR")
                         .requestMatchers("/user/**").hasRole("USER")

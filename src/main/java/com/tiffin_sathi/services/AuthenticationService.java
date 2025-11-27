@@ -106,11 +106,11 @@ public class AuthenticationService {
 
         Vendor savedVendor = vendorRepository.save(vendor);
 
-        // Send registration confirmation email with temp password
+        // Send registration confirmation email WITHOUT temp password
         emailService.sendVendorRegistrationEmail(
                 savedVendor.getBusinessEmail(),
-                savedVendor.getBusinessName(),
-                tempPassword
+                savedVendor.getBusinessName()
+                // Removed tempPassword parameter
         );
 
         // Send emails after save
@@ -119,7 +119,7 @@ public class AuthenticationService {
         return savedVendor;
     }
 
-    
+
     private void sendEmails(Vendor vendor) {
 
         // Get all admins from DB
@@ -128,23 +128,14 @@ public class AuthenticationService {
         // Notify each admin
         for (User admin : admins) {
             emailService.sendEmail(
-                admin.getEmail(),
-                "New Vendor Registration Request",
-                "A new vendor has requested registration:\n\n" +
-                        "Vendor: " + vendor.getBusinessName() + "\n" +
-                        "Email: " + vendor.getBusinessEmail() + "\n" +
-                        "Phone: " + vendor.getPhone()
+                    admin.getEmail(),
+                    "New Vendor Registration Request",
+                    "A new vendor has requested registration:\n\n" +
+                            "Vendor: " + vendor.getBusinessName() + "\n" +
+                            "Email: " + vendor.getBusinessEmail() + "\n" +
+                            "Phone: " + vendor.getPhone()
             );
         }
-
-        // Send confirmation email to vendor
-        emailService.sendEmail(
-            vendor.getBusinessEmail(),
-            "Your Vendor Registration Request is Submitted",
-            "Hello " + vendor.getOwnerName() + ",\n\n" +
-                    "Your request to join our platform has been submitted.\n" +
-                    "We will review your application and notify you soon."
-        );
     }
 
     // -------- Authenticate both User and Vendor --------
@@ -196,4 +187,4 @@ public class AuthenticationService {
         }
         return sb.toString();
     }
- }
+}
