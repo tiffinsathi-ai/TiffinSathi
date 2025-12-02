@@ -30,10 +30,16 @@ public class Payment {
     @Column(name = "transaction_id", length = 100)
     private String transactionId;
 
+    @Column(name = "gateway_transaction_id", length = 100)
+    private String gatewayTransactionId; // For Khalti's pidx or eSewa's transaction_uuid
+
     @Column(name = "payment_gateway_response", columnDefinition = "TEXT")
     private String paymentGatewayResponse;
 
     @CreationTimestamp
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
     @Column(name = "paid_at")
     private LocalDateTime paidAt;
 
@@ -81,8 +87,14 @@ public class Payment {
     public String getTransactionId() { return transactionId; }
     public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
 
+    public String getGatewayTransactionId() { return gatewayTransactionId; }
+    public void setGatewayTransactionId(String gatewayTransactionId) { this.gatewayTransactionId = gatewayTransactionId; }
+
     public String getPaymentGatewayResponse() { return paymentGatewayResponse; }
     public void setPaymentGatewayResponse(String paymentGatewayResponse) { this.paymentGatewayResponse = paymentGatewayResponse; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
     public LocalDateTime getPaidAt() { return paidAt; }
     public void setPaidAt(LocalDateTime paidAt) { this.paidAt = paidAt; }
