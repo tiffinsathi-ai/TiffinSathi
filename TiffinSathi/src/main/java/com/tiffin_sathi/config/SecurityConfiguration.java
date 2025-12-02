@@ -31,10 +31,15 @@ public class SecurityConfiguration {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf.disable()) // Disable CSRF for API and payment callbacks
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints (no authentication required)
                         .requestMatchers("/auth/**").permitAll()
+
+                        // Payment callback endpoints - MUST BE PUBLIC for eSewa/Khalti to work
+                        .requestMatchers(HttpMethod.GET, "/api/payments/callback/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/payments/callback/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/payments/status/**").permitAll()
 
                         // Public meal packages endpoints (no authentication)
                         .requestMatchers(HttpMethod.GET, "/api/meal-packages").permitAll()
@@ -57,6 +62,12 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/users/{userId}/status").hasRole("ADMIN")
                         .requestMatchers("/api/users/{userId}/role").hasRole("ADMIN")
                         .requestMatchers("/api/users/{userId}/change-password").hasRole("USER")
+
+                        // Payment endpoints - allow authenticated users to initiate payments
+                        .requestMatchers(HttpMethod.POST, "/api/payments/initiate").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/payments/admin/all").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/payments/{paymentId}/status").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/payments/{paymentId}").hasAnyRole("USER", "ADMIN")
 
                         // Delivery partners endpoints - VENDOR only
                         .requestMatchers("/api/delivery-partners/**").hasRole("VENDOR")
@@ -81,7 +92,6 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/api/subscriptions/**").hasAnyRole("USER", "VENDOR", "ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/subscriptions/**").hasAnyRole("USER", "VENDOR", "ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/subscriptions/**").hasRole("USER")
-                        .requestMatchers(HttpMethod.POST, "/api/payments/**").hasAnyRole("USER", "ADMIN")
 
                         // Order endpoints
                         .requestMatchers(HttpMethod.GET, "/api/orders/today").hasAnyRole("VENDOR", "DELIVERY", "ADMIN")
@@ -113,14 +123,43 @@ public class SecurityConfiguration {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+
+        // Allow all origins for payment callbacks (you can restrict in production)
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:5173",
                 "http://localhost:3000",
-                "http://localhost:8080"
+                "http://localhost:8080",
+                "https://rc-epay.esewa.com.np",  // eSewa payment gateway
+                "https://dev.khalti.com"         // Khalti payment gateway
         ));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+
+        // Allow all methods for payment callbacks
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+
+        // Allow all headers
+        configuration.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                "X-Requested-With",
+                "Accept",
+                "Origin",
+                "Access-Control-Request-Method",
+                "Access-Control-Request-Headers"
+        ));
+
+        // Allow credentials
         configuration.setAllowCredentials(true);
+
+        // Expose headers
+        configuration.setExposedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                "Access-Control-Allow-Origin",
+                "Access-Control-Allow-Credentials"
+        ));
+
+        // Set max age for preflight requests
+        configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

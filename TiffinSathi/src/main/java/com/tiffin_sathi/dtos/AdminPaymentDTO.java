@@ -8,6 +8,7 @@ public class AdminPaymentDTO {
     private String paymentStatus;
     private Double amount;
     private String transactionId;
+    private String gatewayTransactionId;
     private LocalDateTime paidAt;
 
     // Subscription info
@@ -35,7 +36,7 @@ public class AdminPaymentDTO {
     public AdminPaymentDTO() {}
 
     public AdminPaymentDTO(String paymentId, String paymentMethod, String paymentStatus,
-                           Double amount, String transactionId, LocalDateTime paidAt,
+                           Double amount, String transactionId, String gatewayTransactionId, LocalDateTime paidAt,
                            String subscriptionId, String subscriptionStatus,
                            String packageId, String packageName, Double packagePrice, Integer durationDays,
                            String userId, String userName, String userEmail, String userPhone,
@@ -45,6 +46,7 @@ public class AdminPaymentDTO {
         this.paymentStatus = paymentStatus;
         this.amount = amount;
         this.transactionId = transactionId;
+        this.gatewayTransactionId = gatewayTransactionId;
         this.paidAt = paidAt;
         this.subscriptionId = subscriptionId;
         this.subscriptionStatus = subscriptionStatus;
@@ -64,6 +66,9 @@ public class AdminPaymentDTO {
     // Getters and Setters
     public String getPaymentId() { return paymentId; }
     public void setPaymentId(String paymentId) { this.paymentId = paymentId; }
+
+    public String getGatewayTransactionId() { return gatewayTransactionId; }
+    public void setGatewayTransactionId(String gatewayTransactionId) { this.gatewayTransactionId = gatewayTransactionId; }
 
     public String getPaymentMethod() { return paymentMethod; }
     public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
