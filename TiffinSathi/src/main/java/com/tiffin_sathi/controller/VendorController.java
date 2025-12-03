@@ -2,12 +2,14 @@ package com.tiffin_sathi.controller;
 
 import com.tiffin_sathi.dtos.ChangePasswordDTO;
 import com.tiffin_sathi.dtos.UpdateVendorDTO;
+import com.tiffin_sathi.dtos.VendorCustomerDTO;
 import com.tiffin_sathi.dtos.VendorStatusUpdateDTO;
 import com.tiffin_sathi.model.Vendor;
 import com.tiffin_sathi.model.VendorStatus;
 import com.tiffin_sathi.services.VendorService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -165,4 +167,35 @@ public class VendorController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @GetMapping("/customers")
+    @PreAuthorize("hasRole('VENDOR')")
+    public ResponseEntity<?> getVendorCustomers(Authentication authentication) {
+        try {
+            String email = authentication.getName();
+            List<VendorCustomerDTO> customers = vendorService.getVendorCustomers(email);
+            return ResponseEntity.ok(customers);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error fetching customers: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/customers/search")
+    @PreAuthorize("hasRole('VENDOR')")
+    public ResponseEntity<?> searchVendorCustomers(
+            Authentication authentication,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String phone) {
+        try {
+            String vendorEmail = authentication.getName();
+            List<VendorCustomerDTO> customers = vendorService.searchVendorCustomers(vendorEmail, name, phone);
+            return ResponseEntity.ok(customers);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
 }
