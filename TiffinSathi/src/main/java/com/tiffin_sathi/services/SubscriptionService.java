@@ -57,8 +57,10 @@ public class SubscriptionService {
             if (request.getStartDate() == null) {
                 throw new RuntimeException("Start date is required");
             }
-            if (request.getStartDate().isBefore(LocalDate.now())) {
-                throw new RuntimeException("Start date must be in the future");
+            LocalDate earliestAllowedDate = LocalDate.now().plusDays(2);
+
+            if (request.getStartDate().isBefore(earliestAllowedDate)) {
+                throw new RuntimeException("Start date must be at least 2 days from today.");
             }
 
             // 4. Calculate pricing

@@ -1,17 +1,23 @@
 package com.tiffin_sathi.services;
 
 import com.tiffin_sathi.dtos.UpdateVendorDTO;
+import com.tiffin_sathi.dtos.VendorCustomerDTO;
+import com.tiffin_sathi.model.Subscription;
+import com.tiffin_sathi.model.User;
 import com.tiffin_sathi.model.Vendor;
 import com.tiffin_sathi.model.VendorStatus;
+import com.tiffin_sathi.repository.SubscriptionRepository;
 import com.tiffin_sathi.repository.VendorRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 @Service
 public class VendorService {
@@ -21,6 +27,9 @@ public class VendorService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private SubscriptionRepository subscriptionRepository;
 
     @Autowired
     private EmailService emailService;
@@ -41,10 +50,7 @@ public class VendorService {
         return vendorRepository.findByBusinessEmail(email);
     }
 
-    // Add this method to create vendor with temporary password
     public Vendor createVendor(Vendor vendor, String tempPassword) {
-        // Store the temporary password (unencoded) temporarily if needed
-        // Or generate and store it here
         vendor.setPassword(passwordEncoder.encode(tempPassword));
         Vendor savedVendor = vendorRepository.save(vendor);
 
@@ -180,5 +186,93 @@ public class VendorService {
             sb.append(chars.charAt(random.nextInt(chars.length())));
         }
         return sb.toString();
+    }
+
+    public List<VendorCustomerDTO> getVendorCustomers(String vendorEmail) {
+        Vendor vendor = vendorRepository.findByBusinessEmail(vendorEmail)
+                .orElseThrow(() -> new RuntimeException("Vendor not found"));
+
+        // Get all subscriptions for this vendor
+        List<Subscription> vendorSubscriptions = subscriptionRepository
+                .findByMealPackageVendorVendorId(vendor.getVendorId());
+
+        // Group by user and convert to DTO
+        return vendorSubscriptions.stream()
+                .collect(Collectors.groupingBy(Subscription::getUser))
+                .entrySet().stream()
+                .map(entry -> convertToVendorCustomerDTO(entry.getKey(), entry.getValue()))
+                .collect(Collectors.toList());
+    }
+
+    public List<VendorCustomerDTO> searchVendorCustomers(String vendorEmail, String name, String phone) {
+        List<VendorCustomerDTO> allCustomers = getVendorCustomers(vendorEmail);
+
+        return allCustomers.stream()
+                .filter(customer ->
+                        (name == null || customer.getUserName().toLowerCase().contains(name.toLowerCase())) &&
+                                (phone == null || customer.getPhoneNumber().contains(phone))
+                )
+                .collect(Collectors.toList());
+    }
+
+    private VendorCustomerDTO convertToVendorCustomerDTO(User user, List<Subscription> subscriptions) {
+        VendorCustomerDTO dto = new VendorCustomerDTO();
+        dto.setUserId(String.valueOf(user.getId()));
+        dto.setUserName(user.getUserName());
+        dto.setEmail(user.getEmail());
+        dto.setPhoneNumber(user.getPhoneNumber());
+        dto.setProfilePicture(user.getProfilePicture());
+        dto.setUserStatus(user.getStatus().name());
+
+        // Calculate stats
+        dto.setTotalSubscriptions(subscriptions.size());
+        dto.setActiveSubscriptions((int) subscriptions.stream()
+                .filter(sub -> sub.getStatus() == Subscription.SubscriptionStatus.ACTIVE)
+                .count());
+
+        // Get orders for this user from this vendor
+        int totalOrders = 0;
+        double totalSpent = 0.0;
+        LocalDate firstOrderDate = null;
+        LocalDate lastOrderDate = null;
+
+        for (Subscription subscription : subscriptions) {
+            if (subscription.getMealPackage() != null) {
+                totalSpent += subscription.getTotalAmount();
+            }
+
+        }
+
+        dto.setTotalOrders(totalOrders);
+        dto.setTotalSpent(totalSpent);
+        dto.setFirstOrderDate(firstOrderDate);
+        dto.setLastOrderDate(lastOrderDate);
+
+        // Get current active subscription
+        Subscription activeSubscription = subscriptions.stream()
+                .filter(sub -> sub.getStatus() == Subscription.SubscriptionStatus.ACTIVE)
+                .findFirst()
+                .orElse(null);
+
+        if (activeSubscription != null) {
+            dto.setCurrentSubscriptionId(activeSubscription.getSubscriptionId());
+            dto.setCurrentSubscriptionStatus(activeSubscription.getStatus().name());
+            dto.setCurrentSubscriptionStart(activeSubscription.getStartDate());
+            dto.setCurrentSubscriptionEnd(activeSubscription.getEndDate());
+
+            if (activeSubscription.getMealPackage() != null) {
+                dto.setCurrentPackageName(activeSubscription.getMealPackage().getName());
+            }
+        }
+
+        // Extract dietary notes from subscriptions
+        String dietaryNotes = subscriptions.stream()
+                .map(Subscription::getDietaryNotes)
+                .filter(notes -> notes != null && !notes.isEmpty())
+                .findFirst()
+                .orElse(null);
+        dto.setDietaryNotes(dietaryNotes);
+
+        return dto;
     }
 }

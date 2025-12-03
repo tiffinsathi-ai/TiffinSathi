@@ -7,7 +7,7 @@ public class OrderCustomerDTO {
     private String userName;
     private String email;
     private String phoneNumber;
-    private String profilepicture;
+    private String profilePicture;
 
     public OrderCustomerDTO() {}
 
@@ -16,7 +16,7 @@ public class OrderCustomerDTO {
         this.userName = user.getUserName();
         this.email = user.getEmail();
         this.phoneNumber = user.getPhoneNumber();
-        this.profilepicture = user.getProfilePicture();
+        this.profilePicture = user.getProfilePicture();
     }
 
     // Getters and setters
@@ -52,10 +52,10 @@ public class OrderCustomerDTO {
         this.phoneNumber = phoneNumber;
     }
 
-    public String getProfilepicture() {
-        return profilepicture;
+    public String getProfilePicture() {
+        return profilePicture;
     }
-    public void setProfilepicture(String profilepicture) {
-        this.profilepicture = profilepicture;
+    public void setProfilePicture(String profilePicture) {
+        this.profilePicture = profilePicture;
     }
 }
