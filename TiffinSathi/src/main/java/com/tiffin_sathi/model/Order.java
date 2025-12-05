@@ -1,26 +1,34 @@
 package com.tiffin_sathi.model;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Data;
+import java.time.Instant;
 
 @Entity
 @Table(name = "orders")
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Order {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
+    @Column(unique = true)
     private String transactionUuid;
 
-    private Double amount;
+    private double amount;
 
-    private String status;
+    private String status; // PENDING, COMPLETE, FAILED, REFUNDED, PARTIAL_REFUND, AMBIGUOUS
+
+    private String refId; // eSewa reference id for successful transactions
+
+    private Instant createdAt = Instant.now();
+    private Instant updatedAt = Instant.now();
+
+    @PreUpdate
+    public void onUpdate() {
+        updatedAt = Instant.now();
+    }
 
 	public Long getId() {
 		return id;
@@ -38,11 +46,11 @@ public class Order {
 		this.transactionUuid = transactionUuid;
 	}
 
-	public Double getAmount() {
+	public double getAmount() {
 		return amount;
 	}
 
-	public void setAmount(Double amount) {
+	public void setAmount(double amount) {
 		this.amount = amount;
 	}
 
@@ -52,6 +60,30 @@ public class Order {
 
 	public void setStatus(String status) {
 		this.status = status;
+	}
+
+	public String getRefId() {
+		return refId;
+	}
+
+	public void setRefId(String refId) {
+		this.refId = refId;
+	}
+
+	public Instant getCreatedAt() {
+		return createdAt;
+	}
+
+	public void setCreatedAt(Instant createdAt) {
+		this.createdAt = createdAt;
+	}
+
+	public Instant getUpdatedAt() {
+		return updatedAt;
+	}
+
+	public void setUpdatedAt(Instant updatedAt) {
+		this.updatedAt = updatedAt;
 	}
     
 }

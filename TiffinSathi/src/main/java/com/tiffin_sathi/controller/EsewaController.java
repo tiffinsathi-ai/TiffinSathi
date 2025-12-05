@@ -1,72 +1,77 @@
 package com.tiffin_sathi.controller;
 
-import com.tiffin_sathi.model.Order;
-import com.tiffin_sathi.repository.OrderRepository;
-import com.tiffin_sathi.utils.EsewaSignature;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
+
+/**
+ * Payload coming from the React frontend.
+ * Uses Java Records (Java 17+).
+ */
+record SignatureRequest(
+        @NotNull String total_amount,
+        @NotBlank String transaction_uuid,
+        @NotBlank String product_code
+) {}
 
 @RestController
 @RequestMapping("/api/esewa")
+@CrossOrigin(origins = "http://localhost:5173") // Allow calls from React dev server
 public class EsewaController {
 
-    @Value("${esewa.uatAction}")
-    private String actionUrl;
+    // Sandbox secret key (Do not hardcode in production)
+    private static final String ESEWA_SECRET_KEY = "8gBm/:&EnhH.1/q";
+    private static final String HMAC_ALGORITHM = "HmacSHA256";
 
-    @Value("${esewa.secretKey}")
-    private String secretKey;
+    /**
+     * Generates the HMAC-SHA256 signature for eSewa.
+     * @param request incoming JSON data from frontend
+     * @return JSON with "signature"
+     */
+    @PostMapping("/signature")
+    public ResponseEntity<?> generateSignature(@RequestBody SignatureRequest request) {
+        try {
 
-    @Value("${esewa.productCode}")
-    private String productCode;
+            // 1. Build hash string in EXACT order required by eSewa
+            String hashString = String.format(
+                    "total_amount=%s,transaction_uuid=%s,product_code=%s",
+                    request.total_amount(),
+                    request.transaction_uuid(),
+                    request.product_code()
+            );
 
-    @Value("${esewa.successUrl}")
-    private String successUrl;
+            // 2. Initialize HMAC with secret key
+            SecretKeySpec secretKey = new SecretKeySpec(
+                    ESEWA_SECRET_KEY.getBytes(StandardCharsets.UTF_8),
+                    HMAC_ALGORITHM
+            );
 
-    @Value("${esewa.failureUrl}")
-    private String failureUrl;
+            Mac mac = Mac.getInstance(HMAC_ALGORITHM);
+            mac.init(secretKey);
 
-    @Autowired
-    private OrderRepository orderRepository;
+            // 3. Generate HMAC hash
+            byte[] hmacBytes = mac.doFinal(hashString.getBytes(StandardCharsets.UTF_8));
 
-    @PostMapping("/create")
-    public ResponseEntity<?> createPayment(@RequestBody Map<String, String> body) throws Exception {
-        double amount = Double.parseDouble(body.getOrDefault("amount", "0"));
-        double tax = Double.parseDouble(body.getOrDefault("tax_amount", "0"));
-        double service = Double.parseDouble(body.getOrDefault("product_service_charge", "0"));
-        double delivery = Double.parseDouble(body.getOrDefault("product_delivery_charge", "0"));
+            // 4. Convert hash to Base64
+            String signature = Base64.getEncoder().encodeToString(hmacBytes);
 
-        double total = amount + tax + service + delivery;
-        String totalAmount = String.valueOf((int) Math.round(total));
-        String transactionUuid = UUID.randomUUID().toString();
+            // 5. Return JSON response
+            Map<String, String> response = new HashMap<>();
+            response.put("signature", signature);
 
-        String signature = EsewaSignature.generate(secretKey, totalAmount, transactionUuid, productCode);
+            return ResponseEntity.ok(response);
 
-        // Save order in DB
-        Order order = new Order();
-        order.setTransactionUuid(transactionUuid);
-        order.setAmount(total);
-        order.setStatus("PENDING");
-        orderRepository.save(order);
-
-
-        Map<String, Object> formFields = new HashMap<>();
-        formFields.put("total_amount", totalAmount);
-        formFields.put("transaction_uuid", transactionUuid);
-        formFields.put("product_code", productCode);
-        formFields.put("signature", signature);
-        formFields.put("success_url", successUrl);
-        formFields.put("failure_url", failureUrl);
-
-        Map<String, Object> resp = new HashMap<>();
-        resp.put("actionUrl", actionUrl);
-        resp.put("formFields", formFields);
-
-        return ResponseEntity.ok(resp);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Error generating signature");
+        }
     }
 }
