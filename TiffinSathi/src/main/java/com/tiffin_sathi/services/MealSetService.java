@@ -9,7 +9,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,18 +24,34 @@ public class MealSetService {
     @Autowired
     private VendorRepository vendorRepository;
 
+    private String generateMealSetId() {
+        // Generate unique ID: MSET_<timestamp>_<random_chars>
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        String random = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        return "MSET_" + timestamp + "_" + random;
+    }
+
     @Transactional
     public MealSetDTO createMealSet(Long vendorId, CreateMealSetDTO createMealSetDTO) {
         Vendor vendor = vendorRepository.findById(vendorId)
                 .orElseThrow(() -> new RuntimeException("Vendor not found with id: " + vendorId));
 
-        // Check if set ID already exists
-        if (mealSetRepository.existsBySetIdAndVendorVendorId(createMealSetDTO.getSetId(), vendorId)) {
-            throw new RuntimeException("Meal set with ID '" + createMealSetDTO.getSetId() + "' already exists");
+        // Generate unique ID
+        String setId = generateMealSetId();
+
+        // Check if ID already exists (extremely rare but possible)
+        int attempt = 0;
+        while (mealSetRepository.existsById(setId) && attempt < 5) {
+            setId = generateMealSetId();
+            attempt++;
+        }
+
+        if (mealSetRepository.existsById(setId)) {
+            throw new RuntimeException("Failed to generate unique meal set ID");
         }
 
         MealSet mealSet = new MealSet();
-        mealSet.setSetId(createMealSetDTO.getSetId());
+        mealSet.setSetId(setId);
         mealSet.setName(createMealSetDTO.getName());
         mealSet.setType(createMealSetDTO.getType());
         mealSet.setMealItemsText(createMealSetDTO.getMealItemsText());
@@ -42,6 +61,7 @@ public class MealSetService {
         return convertToDTO(savedMealSet);
     }
 
+    // Update other methods to handle auto-generated IDs...
     public List<MealSetDTO> getMealSetsByVendor(Long vendorId) {
         List<MealSet> mealSets = mealSetRepository.findByVendorVendorId(vendorId);
         return mealSets.stream()
@@ -94,6 +114,9 @@ public class MealSetService {
     public void deleteMealSet(String setId, Long vendorId) {
         MealSet mealSet = mealSetRepository.findBySetIdAndVendorVendorId(setId, vendorId)
                 .orElseThrow(() -> new RuntimeException("Meal set not found or you don't have permission to delete it"));
+
+        // Check if meal set is used in any packages
+        // You may want to add this check in a real implementation
         mealSetRepository.delete(mealSet);
     }
 

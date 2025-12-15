@@ -6,9 +6,7 @@ import jakarta.validation.constraints.NotNull;
 
 public class CreateMealSetDTO {
 
-    @NotBlank(message = "Set ID is required")
-    private String setId;
-
+    // Removed setId field - will be auto-generated
     @NotBlank(message = "Name is required")
     private String name;
 
@@ -19,9 +17,6 @@ public class CreateMealSetDTO {
     private String mealItemsText;
 
     // Getters and Setters
-    public String getSetId() { return setId; }
-    public void setSetId(String setId) { this.setId = setId; }
-
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
