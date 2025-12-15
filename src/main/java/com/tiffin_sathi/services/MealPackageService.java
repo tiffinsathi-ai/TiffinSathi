@@ -2,15 +2,15 @@ package com.tiffin_sathi.services;
 
 import com.tiffin_sathi.dtos.*;
 import com.tiffin_sathi.model.*;
-import com.tiffin_sathi.repository.MealPackageRepository;
-import com.tiffin_sathi.repository.MealSetRepository;
-import com.tiffin_sathi.repository.PackageSetRepository;
-import com.tiffin_sathi.repository.VendorRepository;
+import com.tiffin_sathi.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,27 +28,43 @@ public class MealPackageService {
     @Autowired
     private VendorRepository vendorRepository;
 
+    private String generatePackageId() {
+        // Generate unique ID: PKG_<timestamp>_<random_chars>
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        String random = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        return "PKG_" + timestamp + "_" + random;
+    }
+
     @Transactional
     public MealPackageDTO createMealPackage(Long vendorId, CreateMealPackageDTO createMealPackageDTO) {
         Vendor vendor = vendorRepository.findById(vendorId)
                 .orElseThrow(() -> new RuntimeException("Vendor not found with id: " + vendorId));
 
-        // Check if package ID already exists
-        if (mealPackageRepository.existsById(createMealPackageDTO.getPackageId())) {
-            throw new RuntimeException("Meal package with ID '" + createMealPackageDTO.getPackageId() + "' already exists");
+        // Generate unique ID
+        String packageId = generatePackageId();
+
+        // Check if ID already exists
+        int attempt = 0;
+        while (mealPackageRepository.existsById(packageId) && attempt < 5) {
+            packageId = generatePackageId();
+            attempt++;
+        }
+
+        if (mealPackageRepository.existsById(packageId)) {
+            throw new RuntimeException("Failed to generate unique package ID");
         }
 
         MealPackage mealPackage = new MealPackage();
-        mealPackage.setPackageId(createMealPackageDTO.getPackageId());
+        mealPackage.setPackageId(packageId);
         mealPackage.setName(createMealPackageDTO.getName());
         mealPackage.setDurationDays(createMealPackageDTO.getDurationDays());
         mealPackage.setBasePackageType(createMealPackageDTO.getBasePackageType());
         mealPackage.setPricePerSet(createMealPackageDTO.getPricePerSet());
         mealPackage.setFeatures(createMealPackageDTO.getFeatures());
         mealPackage.setImage(createMealPackageDTO.getImage());
+        mealPackage.setIsAvailable(createMealPackageDTO.getIsAvailable() != null ? createMealPackageDTO.getIsAvailable() : true);
         mealPackage.setVendor(vendor);
 
-        // CHANGED: Only require at least 1 meal set (removed the 7-meal-set requirement)
         if (createMealPackageDTO.getPackageSets() == null || createMealPackageDTO.getPackageSets().isEmpty()) {
             throw new RuntimeException("At least one meal set is required for a meal package");
         }
@@ -58,7 +74,11 @@ public class MealPackageService {
         // Create package-set relationships
         for (PackageSetDTO packageSetDTO : createMealPackageDTO.getPackageSets()) {
             MealSet mealSet = mealSetRepository.findBySetIdAndVendorVendorId(packageSetDTO.getSetId(), vendorId)
-                    .orElseThrow(() -> new RuntimeException("Meal set not found: " + packageSetDTO.getSetId()));
+                    .orElseThrow(() -> new RuntimeException("Meal set not found or not owned by vendor: " + packageSetDTO.getSetId()));
+
+            if (!mealSet.getIsAvailable()) {
+                throw new RuntimeException("Cannot add unavailable meal set to package: " + mealSet.getName());
+            }
 
             PackageSet packageSet = new PackageSet();
             packageSet.setId(new PackageSetId(savedMealPackage.getPackageId(), packageSetDTO.getSetId()));
@@ -72,32 +92,7 @@ public class MealPackageService {
         return convertToDTO(savedMealPackage);
     }
 
-    public List<MealPackageDTO> getMealPackagesByVendor(Long vendorId) {
-        List<MealPackage> mealPackages = mealPackageRepository.findByVendorVendorId(vendorId);
-        return mealPackages.stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    public List<MealPackageDTO> getAvailableMealPackagesByVendor(Long vendorId) {
-        List<MealPackage> mealPackages = mealPackageRepository.findByVendorVendorIdAndIsAvailableTrue(vendorId);
-        return mealPackages.stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    public MealPackageDTO getMealPackageById(String packageId) {
-        MealPackage mealPackage = mealPackageRepository.findById(packageId)
-                .orElseThrow(() -> new RuntimeException("Meal package not found with id: " + packageId));
-        return convertToDTO(mealPackage);
-    }
-
-    public MealPackageDTO getMealPackageByIdAndVendor(String packageId, Long vendorId) {
-        MealPackage mealPackage = mealPackageRepository.findByPackageIdAndVendorVendorId(packageId, vendorId)
-                .orElseThrow(() -> new RuntimeException("Meal package not found or you don't have permission to access it"));
-        return convertToDTO(mealPackage);
-    }
-
+    // Keep other methods as they are, but update them to handle the new DTO structure
     @Transactional
     public MealPackageDTO updateMealPackage(String packageId, Long vendorId, UpdateMealPackageDTO updateMealPackageDTO) {
         MealPackage mealPackage = mealPackageRepository.findByPackageIdAndVendorVendorId(packageId, vendorId)
@@ -127,7 +122,6 @@ public class MealPackageService {
 
         // Update package sets if provided
         if (updateMealPackageDTO.getPackageSets() != null) {
-            // CHANGED: Only require at least 1 meal set (removed the 7-meal-set requirement)
             if (updateMealPackageDTO.getPackageSets().isEmpty()) {
                 throw new RuntimeException("At least one meal set is required for a meal package");
             }
@@ -138,7 +132,11 @@ public class MealPackageService {
             // Create new package-set relationships
             for (PackageSetDTO packageSetDTO : updateMealPackageDTO.getPackageSets()) {
                 MealSet mealSet = mealSetRepository.findBySetIdAndVendorVendorId(packageSetDTO.getSetId(), vendorId)
-                        .orElseThrow(() -> new RuntimeException("Meal set not found: " + packageSetDTO.getSetId()));
+                        .orElseThrow(() -> new RuntimeException("Meal set not found or not owned by vendor: " + packageSetDTO.getSetId()));
+
+                if (!mealSet.getIsAvailable()) {
+                    throw new RuntimeException("Cannot add unavailable meal set to package: " + mealSet.getName());
+                }
 
                 PackageSet packageSet = new PackageSet();
                 packageSet.setId(new PackageSetId(packageId, packageSetDTO.getSetId()));
@@ -154,10 +152,40 @@ public class MealPackageService {
         return convertToDTO(updatedMealPackage);
     }
 
+    // Other methods remain the same...
+    public List<MealPackageDTO> getMealPackagesByVendor(Long vendorId) {
+        List<MealPackage> mealPackages = mealPackageRepository.findByVendorVendorId(vendorId);
+        return mealPackages.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<MealPackageDTO> getAvailableMealPackagesByVendor(Long vendorId) {
+        List<MealPackage> mealPackages = mealPackageRepository.findByVendorVendorIdAndIsAvailableTrue(vendorId);
+        return mealPackages.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public MealPackageDTO getMealPackageById(String packageId) {
+        MealPackage mealPackage = mealPackageRepository.findById(packageId)
+                .orElseThrow(() -> new RuntimeException("Meal package not found with id: " + packageId));
+        return convertToDTO(mealPackage);
+    }
+
+    public MealPackageDTO getMealPackageByIdAndVendor(String packageId, Long vendorId) {
+        MealPackage mealPackage = mealPackageRepository.findByPackageIdAndVendorVendorId(packageId, vendorId)
+                .orElseThrow(() -> new RuntimeException("Meal package not found or you don't have permission to access it"));
+        return convertToDTO(mealPackage);
+    }
+
     @Transactional
     public void deleteMealPackage(String packageId, Long vendorId) {
         MealPackage mealPackage = mealPackageRepository.findByPackageIdAndVendorVendorId(packageId, vendorId)
                 .orElseThrow(() -> new RuntimeException("Meal package not found or you don't have permission to delete it"));
+
+        // Check if package has active subscriptions before deleting
+        // You may want to add this check in a real implementation
         mealPackageRepository.delete(mealPackage);
     }
 
@@ -206,7 +234,7 @@ public class MealPackageService {
         dto.setBasePackageType(mealPackage.getBasePackageType());
         dto.setPricePerSet(mealPackage.getPricePerSet());
         dto.setFeatures(mealPackage.getFeatures());
-        dto.setImage(mealPackage.getImage()); // Make sure this is included
+        dto.setImage(mealPackage.getImage());
         dto.setIsAvailable(mealPackage.getIsAvailable());
         dto.setVendorId(mealPackage.getVendor().getVendorId());
         dto.setVendorName(mealPackage.getVendor().getBusinessName());

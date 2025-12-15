@@ -3,14 +3,11 @@ package com.tiffin_sathi.dtos;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-
 import java.util.List;
 
 public class CreateMealPackageDTO {
 
-    @NotBlank(message = "Package ID is required")
-    private String packageId;
-
+    // Removed packageId field - will be auto-generated
     @NotBlank(message = "Name is required")
     private String name;
 
@@ -27,14 +24,12 @@ public class CreateMealPackageDTO {
 
     private String features;
     private String image;
+    private Boolean isAvailable = true;
 
     @NotNull(message = "At least one meal set is required")
     private List<PackageSetDTO> packageSets;
 
     // Getters and Setters
-    public String getPackageId() { return packageId; }
-    public void setPackageId(String packageId) { this.packageId = packageId; }
-
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
@@ -52,6 +47,9 @@ public class CreateMealPackageDTO {
 
     public String getImage() { return image; }
     public void setImage(String image) { this.image = image; }
+
+    public Boolean getIsAvailable() { return isAvailable; }
+    public void setIsAvailable(Boolean isAvailable) { this.isAvailable = isAvailable; }
 
     public List<PackageSetDTO> getPackageSets() { return packageSets; }
     public void setPackageSets(List<PackageSetDTO> packageSets) { this.packageSets = packageSets; }

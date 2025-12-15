@@ -66,6 +66,8 @@ public class Order {
         READY_FOR_DELIVERY,
         PICKED_UP,
         OUT_FOR_DELIVERY,
+        ASSIGNED,
+        ARRIVED,
         DELIVERED,
         CANCELLED,
         FAILED,

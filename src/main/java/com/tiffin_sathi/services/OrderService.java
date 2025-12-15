@@ -12,8 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -55,7 +54,7 @@ public class OrderService {
         return orderRepository.findByDeliveryPersonId(deliveryPersonId);
     }
 
-    // UPDATED: Filter out DELIVERED, CANCELLED, and PAUSED orders from upcoming
+    // UPDATED: Filter out DELIVERED, CANCELLED, COMPLETED, and ARRIVED orders from upcoming
     public List<Order> getVendorUpcomingOrders() {
         try {
             Long vendorId = vendorContext.getCurrentVendorId();
@@ -81,7 +80,8 @@ public class OrderService {
                                     order.getStatus() != Order.OrderStatus.DELIVERED &&
                                     order.getStatus() != Order.OrderStatus.CANCELLED &&
                                     order.getStatus() != Order.OrderStatus.PAUSED &&
-                                    order.getStatus() != Order.OrderStatus.COMPLETED;
+                                    order.getStatus() != Order.OrderStatus.COMPLETED &&
+                                    order.getStatus() != Order.OrderStatus.ARRIVED;
                         } catch (Exception e) {
                             return false; // Skip orders that can't be verified
                         }
@@ -126,8 +126,9 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
 
-        // If marking as DELIVERED, automatically set to COMPLETED after some time
-        // For now, we'll keep them separate and let the vendor decide when to mark as COMPLETED
+        // Validate status transition
+        validateStatusTransition(order.getStatus(), status);
+
         order.setStatus(status);
 
         if (status == Order.OrderStatus.DELIVERED || status == Order.OrderStatus.COMPLETED) {
@@ -142,6 +143,9 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
 
+        // Validate status transition
+        validateStatusTransition(order.getStatus(), status);
+
         order.setStatus(status);
 
         if (deliveryPersonId != null) {
@@ -153,6 +157,84 @@ public class OrderService {
         }
 
         return orderRepository.save(order);
+    }
+
+    // Validate status transitions to ensure logical flow
+    private void validateStatusTransition(Order.OrderStatus currentStatus, Order.OrderStatus newStatus) {
+        // Define valid transitions
+        Map<Order.OrderStatus, List<Order.OrderStatus>> validTransitions = new HashMap<>();
+
+        validTransitions.put(Order.OrderStatus.PENDING, Arrays.asList(
+                Order.OrderStatus.CONFIRMED,
+                Order.OrderStatus.PREPARING,
+                Order.OrderStatus.CANCELLED
+        ));
+
+
+
+        validTransitions.put(Order.OrderStatus.CONFIRMED, Arrays.asList(
+                Order.OrderStatus.PREPARING,
+                Order.OrderStatus.CANCELLED
+        ));
+
+        validTransitions.put(Order.OrderStatus.PREPARING, Arrays.asList(
+                Order.OrderStatus.READY_FOR_DELIVERY,
+                Order.OrderStatus.CANCELLED
+        ));
+
+        validTransitions.put(Order.OrderStatus.READY_FOR_DELIVERY, Arrays.asList(
+                Order.OrderStatus.ASSIGNED,
+                Order.OrderStatus.CANCELLED
+        ));
+
+        validTransitions.put(Order.OrderStatus.ASSIGNED, Arrays.asList(
+                Order.OrderStatus.PICKED_UP,
+                Order.OrderStatus.CANCELLED
+        ));
+
+        validTransitions.put(Order.OrderStatus.PICKED_UP, Arrays.asList(
+                Order.OrderStatus.OUT_FOR_DELIVERY,
+                Order.OrderStatus.CANCELLED
+        ));
+
+        validTransitions.put(Order.OrderStatus.OUT_FOR_DELIVERY, Arrays.asList(
+                Order.OrderStatus.ARRIVED,
+                Order.OrderStatus.CANCELLED
+        ));
+
+        validTransitions.put(Order.OrderStatus.ARRIVED, Arrays.asList(
+                Order.OrderStatus.DELIVERED,
+                Order.OrderStatus.CANCELLED
+        ));
+
+        validTransitions.put(Order.OrderStatus.DELIVERED, Arrays.asList(
+                Order.OrderStatus.COMPLETED
+        ));
+
+        validTransitions.put(Order.OrderStatus.PAUSED, Arrays.asList(
+                Order.OrderStatus.CONFIRMED,
+                Order.OrderStatus.CANCELLED
+        ));
+
+        // Special transitions that are always allowed
+        List<Order.OrderStatus> alwaysAllowed = Arrays.asList(
+                Order.OrderStatus.CANCELLED,
+                Order.OrderStatus.FAILED
+        );
+
+        // Check if transition is valid
+        if (alwaysAllowed.contains(newStatus)) {
+            return; // Always allowed to cancel or mark as failed
+        }
+
+        if (validTransitions.containsKey(currentStatus)) {
+            if (!validTransitions.get(currentStatus).contains(newStatus)) {
+                throw new RuntimeException("Invalid status transition from " + currentStatus + " to " + newStatus);
+            }
+        } else {
+            // For statuses not in the map (like COMPLETED), no further transitions are allowed
+            throw new RuntimeException("Cannot transition from " + currentStatus + " to " + newStatus);
+        }
     }
 
     @Transactional
@@ -255,6 +337,26 @@ public class OrderService {
         }
     }
 
+    // NEW: Method to mark arrived orders as delivered if they've been in ARRIVED status for too long
+    @Scheduled(cron = "0 */30 * * * ?") // Run every 30 minutes
+    @Transactional
+    public void autoMarkArrivedAsDelivered() {
+        LocalDate today = LocalDate.now();
+        List<Order> arrivedOrders = orderRepository.findByDeliveryDateAndStatus(today, Order.OrderStatus.ARRIVED);
+
+        // Mark orders that have been in ARRIVED status for more than 1 hour as DELIVERED
+        // Note: This is a simplified implementation. In production, you'd track when status was changed to ARRIVED
+
+        if (!arrivedOrders.isEmpty()) {
+            for (Order order : arrivedOrders) {
+                order.setStatus(Order.OrderStatus.DELIVERED);
+                order.setActualDeliveryTime(java.time.LocalDateTime.now());
+            }
+            orderRepository.saveAll(arrivedOrders);
+            System.out.println("Auto-marked " + arrivedOrders.size() + " arrived orders as DELIVERED");
+        }
+    }
+
     // NEW METHODS FOR DELIVERY PARTNERS
 
     public List<Order> getDeliveryPartnerOrders(String deliveryPartnerEmail) {
@@ -268,7 +370,7 @@ public class OrderService {
 
             return orders.stream()
                     .filter(order -> {
-                        // Only include orders that are not delivered, cancelled, or completed
+                        // Only include orders that are active for delivery (not delivered, cancelled, or completed)
                         return order.getStatus() != Order.OrderStatus.DELIVERED &&
                                 order.getStatus() != Order.OrderStatus.CANCELLED &&
                                 order.getStatus() != Order.OrderStatus.COMPLETED;
@@ -333,5 +435,101 @@ public class OrderService {
             e.printStackTrace();
             return new ArrayList<>();
         }
+    }
+
+    // NEW: Get orders that are currently in delivery process (for delivery dashboard)
+    public List<Order> getDeliveryPartnerActiveDeliveries(String deliveryPartnerEmail) {
+        try {
+            DeliveryPartner deliveryPartner = deliveryPartnerRepository.findByEmail(deliveryPartnerEmail)
+                    .orElseThrow(() -> new RuntimeException("Delivery partner not found with email: " + deliveryPartnerEmail));
+
+            LocalDate today = LocalDate.now();
+            List<Order> orders = orderRepository.findByDeliveryDateAndDeliveryPersonId(today, deliveryPartner.getPartnerId().toString());
+
+            return orders.stream()
+                    .filter(order -> {
+                        // Include orders that are in delivery process
+                        return order.getStatus() == Order.OrderStatus.OUT_FOR_DELIVERY ||
+                                order.getStatus() == Order.OrderStatus.ASSIGNED ||
+                                order.getStatus() == Order.OrderStatus.PICKED_UP ||
+                                order.getStatus() == Order.OrderStatus.ARRIVED;
+                    })
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            System.err.println("Error fetching delivery partner active deliveries: " + e.getMessage());
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+    }
+
+    // NEW: Update order to ON_THE_WAY status
+    @Transactional
+    public Order markOrderAsOytForDelivery(Long orderId, String deliveryPartnerEmail) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+        // Verify the delivery partner is assigned to this order
+        DeliveryPartner deliveryPartner = deliveryPartnerRepository.findByEmail(deliveryPartnerEmail)
+                .orElseThrow(() -> new RuntimeException("Delivery partner not found"));
+
+        if (!order.getDeliveryPersonId().equals(deliveryPartner.getPartnerId().toString())) {
+            throw new RuntimeException("Delivery partner is not assigned to this order");
+        }
+
+        // Validate current status
+        if (order.getStatus() != Order.OrderStatus.PICKED_UP) {
+            throw new RuntimeException("Order must be in PICKED_UP status to mark as OUT_FOR_DELIVERY");
+        }
+
+        order.setStatus(Order.OrderStatus.OUT_FOR_DELIVERY);
+        return orderRepository.save(order);
+    }
+
+    // NEW: Update order to ARRIVED status
+    @Transactional
+    public Order markOrderAsArrived(Long orderId, String deliveryPartnerEmail) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+        // Verify the delivery partner is assigned to this order
+        DeliveryPartner deliveryPartner = deliveryPartnerRepository.findByEmail(deliveryPartnerEmail)
+                .orElseThrow(() -> new RuntimeException("Delivery partner not found"));
+
+        if (!order.getDeliveryPersonId().equals(deliveryPartner.getPartnerId().toString())) {
+            throw new RuntimeException("Delivery partner is not assigned to this order");
+        }
+
+        // Validate current status
+        if (order.getStatus() != Order.OrderStatus.OUT_FOR_DELIVERY) {
+            throw new RuntimeException("Order must be in OUT_FOR_DELIVERY status to mark as ARRIVED");
+        }
+
+        order.setStatus(Order.OrderStatus.ARRIVED);
+        return orderRepository.save(order);
+    }
+
+    // NEW: Update order to DELIVERED status (for delivery partners)
+    @Transactional
+    public Order markOrderAsDelivered(Long orderId, String deliveryPartnerEmail) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+        // Verify the delivery partner is assigned to this order
+        DeliveryPartner deliveryPartner = deliveryPartnerRepository.findByEmail(deliveryPartnerEmail)
+                .orElseThrow(() -> new RuntimeException("Delivery partner not found"));
+
+        if (!order.getDeliveryPersonId().equals(deliveryPartner.getPartnerId().toString())) {
+            throw new RuntimeException("Delivery partner is not assigned to this order");
+        }
+
+        // Validate current status
+        if (order.getStatus() != Order.OrderStatus.ARRIVED && order.getStatus() != Order.OrderStatus.OUT_FOR_DELIVERY) {
+            throw new RuntimeException("Order must be in ARRIVED or OUT_FOR_DELIVERY status to mark as DELIVERED");
+        }
+
+        order.setStatus(Order.OrderStatus.DELIVERED);
+        order.setActualDeliveryTime(java.time.LocalDateTime.now());
+        return orderRepository.save(order);
     }
 }

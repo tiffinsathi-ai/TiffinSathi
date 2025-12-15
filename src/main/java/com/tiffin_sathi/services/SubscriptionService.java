@@ -57,8 +57,10 @@ public class SubscriptionService {
             if (request.getStartDate() == null) {
                 throw new RuntimeException("Start date is required");
             }
-            if (request.getStartDate().isBefore(LocalDate.now())) {
-                throw new RuntimeException("Start date must be in the future");
+            LocalDate earliestAllowedDate = LocalDate.now().plusDays(2);
+
+            if (request.getStartDate().isBefore(earliestAllowedDate)) {
+                throw new RuntimeException("Start date must be at least 2 days from today.");
             }
 
             // 4. Calculate pricing
@@ -299,7 +301,6 @@ public class SubscriptionService {
                 .collect(Collectors.toList());
     }
 
-    // ADD THIS MISSING METHOD
     public Optional<SubscriptionResponseDTO> getSubscriptionById(String subscriptionId) {
         return subscriptionRepository.findByIdWithUser(subscriptionId)
                 .map(this::convertToResponseDTO);
@@ -328,7 +329,6 @@ public class SubscriptionService {
         return convertToResponseDTO(updated);
     }
 
-    // ADD THIS MISSING METHOD
     @Transactional
     public SubscriptionResponseDTO pauseSubscription(String subscriptionId, String userEmail) {
         Subscription subscription = subscriptionRepository.findByIdWithUser(subscriptionId)
@@ -352,7 +352,6 @@ public class SubscriptionService {
         return convertToResponseDTO(updated);
     }
 
-    // ADD THIS MISSING METHOD
     @Transactional
     public SubscriptionResponseDTO resumeSubscription(String subscriptionId, String userEmail) {
         Subscription subscription = subscriptionRepository.findByIdWithUser(subscriptionId)
@@ -376,7 +375,6 @@ public class SubscriptionService {
         return convertToResponseDTO(updated);
     }
 
-    // ADD THIS MISSING METHOD
     @Transactional
     public void cancelSubscription(String subscriptionId) {
         Subscription subscription = subscriptionRepository.findById(subscriptionId)
@@ -451,23 +449,35 @@ public class SubscriptionService {
         }
     }
 
-    // UPDATED: Get ALL subscriptions for vendor (including paused and cancelled)
+    // FIXED: Get ALL subscriptions for vendor (including ALL statuses)
     public List<SubscriptionResponseDTO> getSubscriptionsByVendorEmail(String vendorEmail) {
         try {
+            System.out.println("Fetching ALL subscriptions for vendor: " + vendorEmail);
+
             Vendor vendor = vendorRepository.findByBusinessEmail(vendorEmail)
-                    .orElseThrow(() -> new RuntimeException("Vendor not found"));
+                    .orElseThrow(() -> new RuntimeException("Vendor not found with email: " + vendorEmail));
 
             List<Subscription> subscriptions = subscriptionRepository.findByMealPackageVendorVendorId(vendor.getVendorId());
+
+            System.out.println("Found " + subscriptions.size() + " total subscriptions for vendor: " + vendorEmail);
+
+            // Log the status distribution for debugging
+            Map<Subscription.SubscriptionStatus, Long> statusCount = subscriptions.stream()
+                    .collect(Collectors.groupingBy(Subscription::getStatus, Collectors.counting()));
+            System.out.println("Subscription status distribution: " + statusCount);
 
             return subscriptions.stream()
                     .map(this::convertToResponseDTO)
                     .collect(Collectors.toList());
+
         } catch (Exception e) {
-            throw new RuntimeException("Error fetching vendor subscriptions: " + e.getMessage());
+            System.err.println("Error getting vendor subscriptions: " + e.getMessage());
+            e.printStackTrace();
+            return new ArrayList<>();
         }
     }
 
-    // UPDATED: Get only ACTIVE subscriptions for vendor
+    // Get only ACTIVE subscriptions for vendor
     public List<SubscriptionResponseDTO> getActiveSubscriptionsByVendorEmail(String vendorEmail) {
         try {
             Vendor vendor = vendorRepository.findByBusinessEmail(vendorEmail)
@@ -484,7 +494,7 @@ public class SubscriptionService {
         }
     }
 
-    // NEW: Get subscriptions by status for vendor
+    // Get subscriptions by specific status for vendor
     public List<SubscriptionResponseDTO> getSubscriptionsByVendorEmailAndStatus(String vendorEmail, Subscription.SubscriptionStatus status) {
         try {
             Vendor vendor = vendorRepository.findByBusinessEmail(vendorEmail)
@@ -522,17 +532,17 @@ public class SubscriptionService {
             dto.setIncludeCutlery(subscription.getIncludeCutlery());
             dto.setCreatedAt(subscription.getCreatedAt());
 
-            // FIXED: Add customer information - using getId() instead of getUserId()
+            // Customer information
             if (subscription.getUser() != null) {
                 OrderCustomerDTO customer = new OrderCustomerDTO();
-                customer.setUserId(String.valueOf(subscription.getUser().getId())); // Fixed this line
+                customer.setUserId(String.valueOf(subscription.getUser().getId()));
                 customer.setUserName(subscription.getUser().getUserName());
                 customer.setEmail(subscription.getUser().getEmail());
                 customer.setPhoneNumber(subscription.getUser().getPhoneNumber());
                 dto.setCustomer(customer);
             }
 
-            // Add payment information if exists
+            // Payment information if exists
             if (subscription.getPayment() != null) {
                 PaymentResponseDTO paymentDTO = new PaymentResponseDTO();
                 paymentDTO.setPaymentId(subscription.getPayment().getPaymentId());
