@@ -49,6 +49,9 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/api/meal-sets").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/meal-sets/**").permitAll()
 
+                        // Public vendor endpoints for user portal
+                        .requestMatchers(HttpMethod.GET, "/api/vendors/public/**").permitAll()
+
                         // Vendor management endpoints
                         .requestMatchers("/api/vendors/status/**").hasRole("ADMIN")
                         .requestMatchers("/api/vendors").hasRole("ADMIN")

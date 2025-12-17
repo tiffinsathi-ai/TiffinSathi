@@ -1,13 +1,10 @@
 package com.tiffin_sathi.services;
 
+import com.tiffin_sathi.dtos.PublicVendorDTO;
 import com.tiffin_sathi.dtos.UpdateVendorDTO;
 import com.tiffin_sathi.dtos.VendorCustomerDTO;
-import com.tiffin_sathi.model.Subscription;
-import com.tiffin_sathi.model.User;
-import com.tiffin_sathi.model.Vendor;
-import com.tiffin_sathi.model.VendorStatus;
-import com.tiffin_sathi.repository.SubscriptionRepository;
-import com.tiffin_sathi.repository.VendorRepository;
+import com.tiffin_sathi.model.*;
+import com.tiffin_sathi.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -33,6 +30,9 @@ public class VendorService {
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private MealPackageRepository mealPackageRepository;
 
     public List<Vendor> getAllVendors() {
         return vendorRepository.findAll();
@@ -240,7 +240,6 @@ public class VendorService {
             if (subscription.getMealPackage() != null) {
                 totalSpent += subscription.getTotalAmount();
             }
-
         }
 
         dto.setTotalOrders(totalOrders);
@@ -272,6 +271,91 @@ public class VendorService {
                 .findFirst()
                 .orElse(null);
         dto.setDietaryNotes(dietaryNotes);
+
+        return dto;
+    }
+
+    // ========== USER PORTAL METHODS ==========
+
+    public List<PublicVendorDTO> getApprovedVendors() {
+        List<Vendor> approvedVendors = vendorRepository.findByStatus(VendorStatus.APPROVED);
+        return approvedVendors.stream()
+                .map(this::convertToPublicVendorDTO)
+                .collect(Collectors.toList());
+    }
+
+    public PublicVendorDTO getPublicVendorDetails(Long vendorId) {
+        Vendor vendor = vendorRepository.findById(vendorId)
+                .orElseThrow(() -> new RuntimeException("Vendor not found with id: " + vendorId));
+
+        // Only return approved vendors to users
+        if (vendor.getStatus() != VendorStatus.APPROVED) {
+            throw new RuntimeException("Vendor is not available");
+        }
+
+        return convertToPublicVendorDTO(vendor);
+    }
+
+    public List<PublicVendorDTO> searchVendors(String cuisine, String location, String name) {
+        List<Vendor> allApprovedVendors = vendorRepository.findByStatus(VendorStatus.APPROVED);
+
+        return allApprovedVendors.stream()
+                .filter(vendor -> {
+                    boolean matches = true;
+
+                    if (cuisine != null && !cuisine.isEmpty()) {
+                        matches = matches && vendor.getCuisineType() != null
+                                && vendor.getCuisineType().toLowerCase().contains(cuisine.toLowerCase());
+                    }
+
+                    if (location != null && !location.isEmpty()) {
+                        matches = matches && vendor.getBusinessAddress() != null
+                                && vendor.getBusinessAddress().toLowerCase().contains(location.toLowerCase());
+                    }
+
+                    if (name != null && !name.isEmpty()) {
+                        matches = matches && vendor.getBusinessName() != null
+                                && vendor.getBusinessName().toLowerCase().contains(name.toLowerCase());
+                    }
+
+                    return matches;
+                })
+                .map(this::convertToPublicVendorDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<PublicVendorDTO> getFeaturedVendors() {
+        List<Vendor> approvedVendors = vendorRepository.findByStatus(VendorStatus.APPROVED);
+
+        // Return first 6 approved vendors as featured
+        return approvedVendors.stream()
+                .limit(6)
+                .map(this::convertToPublicVendorDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<PublicVendorDTO> getVendorsByCuisine(String cuisineType) {
+        List<Vendor> allApprovedVendors = vendorRepository.findByStatus(VendorStatus.APPROVED);
+
+        return allApprovedVendors.stream()
+                .filter(vendor -> vendor.getCuisineType() != null
+                        && vendor.getCuisineType().equalsIgnoreCase(cuisineType))
+                .map(this::convertToPublicVendorDTO)
+                .collect(Collectors.toList());
+    }
+
+    private PublicVendorDTO convertToPublicVendorDTO(Vendor vendor) {
+        PublicVendorDTO dto = new PublicVendorDTO();
+        dto.setVendorId(vendor.getVendorId());
+        dto.setBusinessName(vendor.getBusinessName());
+        dto.setOwnerName(vendor.getOwnerName());
+        dto.setPhone(vendor.getPhone());
+        dto.setBusinessAddress(vendor.getBusinessAddress());
+        dto.setCuisineType(vendor.getCuisineType());
+        dto.setDescription(vendor.getDescription());
+        dto.setProfilePicture(vendor.getProfilePicture());
+        dto.setYearsInBusiness(vendor.getYearsInBusiness());
+        dto.setStatus(vendor.getStatus().name());
 
         return dto;
     }
