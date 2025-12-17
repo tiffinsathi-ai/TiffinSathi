@@ -1,9 +1,6 @@
 package com.tiffin_sathi.controller;
 
-import com.tiffin_sathi.dtos.ChangePasswordDTO;
-import com.tiffin_sathi.dtos.UpdateVendorDTO;
-import com.tiffin_sathi.dtos.VendorCustomerDTO;
-import com.tiffin_sathi.dtos.VendorStatusUpdateDTO;
+import com.tiffin_sathi.dtos.*;
 import com.tiffin_sathi.model.Vendor;
 import com.tiffin_sathi.model.VendorStatus;
 import com.tiffin_sathi.services.VendorService;
@@ -198,4 +195,55 @@ public class VendorController {
         }
     }
 
+    // ========== USER PORTAL ENDPOINTS ==========
+
+    // Get all approved vendors for user portal
+    @GetMapping("/public/approved")
+    public ResponseEntity<List<PublicVendorDTO>> getApprovedVendors() {
+        List<PublicVendorDTO> vendors = vendorService.getApprovedVendors();
+        return ResponseEntity.ok(vendors);
+    }
+
+    // Get vendor details for user portal (public info only)
+    @GetMapping("/public/{vendorId}")
+    public ResponseEntity<?> getPublicVendorDetails(@PathVariable Long vendorId) {
+        try {
+            PublicVendorDTO vendor = vendorService.getPublicVendorDetails(vendorId);
+            return ResponseEntity.ok(vendor);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // Search vendors by cuisine, location, or name
+    @GetMapping("/public/search")
+    public ResponseEntity<?> searchVendors(
+            @RequestParam(required = false) String cuisine,
+            @RequestParam(required = false) String location,
+            @RequestParam(required = false) String name) {
+        try {
+            List<PublicVendorDTO> vendors = vendorService.searchVendors(cuisine, location, name);
+            return ResponseEntity.ok(vendors);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // Get featured vendors (for homepage)
+    @GetMapping("/public/featured")
+    public ResponseEntity<List<PublicVendorDTO>> getFeaturedVendors() {
+        List<PublicVendorDTO> featuredVendors = vendorService.getFeaturedVendors();
+        return ResponseEntity.ok(featuredVendors);
+    }
+
+    // Get vendors by cuisine type
+    @GetMapping("/public/cuisine/{cuisineType}")
+    public ResponseEntity<?> getVendorsByCuisine(@PathVariable String cuisineType) {
+        try {
+            List<PublicVendorDTO> vendors = vendorService.getVendorsByCuisine(cuisineType);
+            return ResponseEntity.ok(vendors);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

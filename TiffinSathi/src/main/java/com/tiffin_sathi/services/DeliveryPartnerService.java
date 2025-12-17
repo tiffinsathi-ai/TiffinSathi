@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 @Service
 public class DeliveryPartnerService {
 
-    @Autowired
+    @Autowired  
     private DeliveryPartnerRepository deliveryPartnerRepository;
 
     @Autowired
