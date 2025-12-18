@@ -196,7 +196,7 @@ public class SubscriptionService {
             subscriptionDay.setDayOfWeek(dayDTO.getDayOfWeek());
             subscriptionDay.setIsEnabled(dayDTO.getEnabled());
 
-            if (dayDTO.getEnabled() && dayDTO.getMeals() != null) {
+            if (dayDTO.getEnabled() && dayDTO.getMeals() != null && !dayDTO.getMeals().isEmpty()) {
                 List<SubscriptionDayMeal> dayMeals = new ArrayList<>();
                 for (SubscriptionDayMealDTO mealDTO : dayDTO.getMeals()) {
                     MealSet mealSet = mealSetRepository.findById(mealDTO.getSetId())
@@ -211,6 +211,9 @@ public class SubscriptionService {
                     dayMeals.add(dayMeal);
                 }
                 subscriptionDay.setSubscriptionDayMeals(dayMeals);
+            } else if (dayDTO.getEnabled() && (dayDTO.getMeals() == null || dayDTO.getMeals().isEmpty())) {
+                // Log a warning if day is enabled but has no meals
+                System.out.println("Warning: Day " + dayDTO.getDayOfWeek() + " is enabled but has no meals. No orders will be generated for this day.");
             }
             subscription.getSubscriptionDays().add(subscriptionDay);
         }
@@ -221,6 +224,7 @@ public class SubscriptionService {
         LocalDate endDate = subscription.getEndDate();
 
         List<Order> orders = new ArrayList<>();
+        int skippedDays = 0;
 
         while (!currentDate.isAfter(endDate)) {
             DayOfWeek dayOfWeek = currentDate.getDayOfWeek();
@@ -232,7 +236,12 @@ public class SubscriptionService {
 
             if (isDayEnabled) {
                 Order order = createOrderFromSubscription(subscription, currentDate);
-                orders.add(order);
+                if (order != null) {
+                    orders.add(order);
+                } else {
+                    skippedDays++;
+                    System.out.println("Skipping order generation for " + currentDate + " (" + dayName + ") - No meals found for this day");
+                }
             }
 
             currentDate = currentDate.plusDays(1);
@@ -241,6 +250,15 @@ public class SubscriptionService {
         if (!orders.isEmpty()) {
             orderRepository.saveAll(orders);
             System.out.println("Generated " + orders.size() + " orders for subscription: " + subscription.getSubscriptionId());
+        }
+
+        if (skippedDays > 0) {
+            System.out.println("Skipped " + skippedDays + " days due to no meal sets for subscription: " + subscription.getSubscriptionId());
+        }
+
+        if (orders.isEmpty() && skippedDays > 0) {
+            System.out.println("Warning: No orders were generated for subscription " + subscription.getSubscriptionId() +
+                    " because all enabled days have no meal sets.");
         }
     }
 
@@ -261,6 +279,12 @@ public class SubscriptionService {
 
         if (subscriptionDayOpt.isPresent()) {
             SubscriptionDay subscriptionDay = subscriptionDayOpt.get();
+
+            // Check if meal sets are available for this day
+            if (subscriptionDay.getSubscriptionDayMeals() == null || subscriptionDay.getSubscriptionDayMeals().isEmpty()) {
+                return null; // Return null to indicate no order should be created
+            }
+
             List<OrderMeal> orderMeals = new ArrayList<>();
             for (SubscriptionDayMeal subscriptionDayMeal : subscriptionDay.getSubscriptionDayMeals()) {
                 OrderMeal orderMeal = new OrderMeal();
@@ -270,6 +294,9 @@ public class SubscriptionService {
                 orderMeals.add(orderMeal);
             }
             order.setOrderMeals(orderMeals);
+        } else {
+            // Day is not enabled or doesn't exist in subscription days
+            return null;
         }
 
         return order;
@@ -579,6 +606,7 @@ public class SubscriptionService {
         // Generate new orders from today/start date to end date
         LocalDate currentDate = startDate;
         List<Order> newOrders = new ArrayList<>();
+        int skippedDays = 0;
 
         while (!currentDate.isAfter(endDate)) {
             DayOfWeek dayOfWeek = currentDate.getDayOfWeek();
@@ -590,7 +618,12 @@ public class SubscriptionService {
 
             if (isDayEnabled) {
                 Order order = createOrderFromSubscription(subscription, currentDate);
-                newOrders.add(order);
+                if (order != null) {
+                    newOrders.add(order);
+                } else {
+                    skippedDays++;
+                    System.out.println("Skipping order regeneration for " + currentDate + " (" + dayName + ") - No meals found for this day");
+                }
             }
 
             currentDate = currentDate.plusDays(1);
@@ -599,6 +632,10 @@ public class SubscriptionService {
         if (!newOrders.isEmpty()) {
             orderRepository.saveAll(newOrders);
             System.out.println("Regenerated " + newOrders.size() + " orders for subscription: " + subscription.getSubscriptionId());
+        }
+
+        if (skippedDays > 0) {
+            System.out.println("Skipped " + skippedDays + " days during regeneration due to no meal sets");
         }
     }
 
