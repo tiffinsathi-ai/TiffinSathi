@@ -13,17 +13,19 @@ import java.util.Optional;
 @Repository
 public interface SubscriptionRepository extends JpaRepository<Subscription, String> {
 
-    @Query("SELECT s FROM Subscription s JOIN FETCH s.user u WHERE u.email = :email")
+    // Updated to fetch meal package eagerly
+    @Query("SELECT s FROM Subscription s JOIN FETCH s.user u JOIN FETCH s.mealPackage mp WHERE u.email = :email")
     List<Subscription> findByUserEmail(@Param("email") String email);
 
     List<Subscription> findByStatus(Subscription.SubscriptionStatus status);
 
-    @Query("SELECT s FROM Subscription s JOIN FETCH s.user WHERE s.subscriptionId = :subscriptionId")
+    // Updated to fetch meal package eagerly
+    @Query("SELECT s FROM Subscription s JOIN FETCH s.user JOIN FETCH s.mealPackage WHERE s.subscriptionId = :subscriptionId")
     Optional<Subscription> findByIdWithUser(@Param("subscriptionId") String subscriptionId);
 
-    @Query("SELECT s FROM Subscription s JOIN FETCH s.user WHERE s.user.phoneNumber = :phoneNumber")
+    // Updated to fetch meal package eagerly
+    @Query("SELECT s FROM Subscription s JOIN FETCH s.user JOIN FETCH s.mealPackage WHERE s.user.phoneNumber = :phoneNumber")
     List<Subscription> findByUserPhoneNumber(@Param("phoneNumber") String phoneNumber);
-
 
     @Query("SELECT s FROM Subscription s WHERE s.endDate >= :date AND s.status = 'ACTIVE'")
     List<Subscription> findActiveSubscriptionsOnDate(@Param("date") LocalDate date);
@@ -37,14 +39,13 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Stri
             @Param("endDate") LocalDate endDate,
             @Param("startDate") LocalDate startDate);
 
-    @Query("SELECT s FROM Subscription s WHERE s.mealPackage.vendor.vendorId = :vendorId")
+    // Updated to fetch meal package eagerly
+    @Query("SELECT s FROM Subscription s JOIN FETCH s.mealPackage mp WHERE mp.vendor.vendorId = :vendorId")
     List<Subscription> findByMealPackageVendorVendorId(@Param("vendorId") Long vendorId);
 
-    @Query("SELECT s FROM Subscription s WHERE s.mealPackage.vendor.vendorId = :vendorId AND s.status = :status")
+    // Updated to fetch meal package eagerly
+    @Query("SELECT s FROM Subscription s JOIN FETCH s.mealPackage mp WHERE mp.vendor.vendorId = :vendorId AND s.status = :status")
     List<Subscription> findByMealPackageVendorVendorIdAndStatus(
             @Param("vendorId") Long vendorId,
             @Param("status") Subscription.SubscriptionStatus status);
-
-
-
 }
