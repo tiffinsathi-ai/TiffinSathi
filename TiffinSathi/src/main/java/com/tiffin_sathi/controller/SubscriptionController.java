@@ -149,9 +149,10 @@ public class SubscriptionController {
 
     @DeleteMapping("/{subscriptionId}")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<Void> cancelSubscription(@PathVariable String subscriptionId) {
+    public ResponseEntity<Void> cancelSubscription(@PathVariable String subscriptionId, Authentication authentication) {
         try {
-            subscriptionService.cancelSubscription(subscriptionId);
+            String userEmail = authentication.getName();
+            subscriptionService.cancelSubscription(subscriptionId, userEmail);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();

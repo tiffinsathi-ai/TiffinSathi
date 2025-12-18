@@ -26,6 +26,17 @@ public class SubscriptionResponseDTO {
     private PaymentResponseDTO payment;
     private OrderCustomerDTO customer;
 
+    // Add meal package information
+    private String packageName;
+    private String packageImage;
+    private String packageId;
+
+    // Add vendor information
+    private Long vendorId;
+    private String vendorName;
+    private String vendorBusinessName;
+    private String vendorBusinessEmail;
+
     // Getters and Setters
     public String getSubscriptionId() { return subscriptionId; }
     public void setSubscriptionId(String subscriptionId) { this.subscriptionId = subscriptionId; }
@@ -86,8 +97,27 @@ public class SubscriptionResponseDTO {
 
     public OrderCustomerDTO getCustomer() { return customer; }
     public void setCustomer(OrderCustomerDTO customer) { this.customer = customer; }
+
+    // New getters and setters for meal package info
+    public String getPackageName() { return packageName; }
+    public void setPackageName(String packageName) { this.packageName = packageName; }
+
+    public String getPackageImage() { return packageImage; }
+    public void setPackageImage(String packageImage) { this.packageImage = packageImage; }
+
+    public String getPackageId() { return packageId; }
+    public void setPackageId(String packageId) { this.packageId = packageId; }
+
+    // New getters and setters for vendor info
+    public Long getVendorId() { return vendorId; }
+    public void setVendorId(Long vendorId) { this.vendorId = vendorId; }
+
+    public String getVendorName() { return vendorName; }
+    public void setVendorName(String vendorName) { this.vendorName = vendorName; }
+
+    public String getVendorBusinessName() { return vendorBusinessName; }
+    public void setVendorBusinessName(String vendorBusinessName) { this.vendorBusinessName = vendorBusinessName; }
+
+    public String getVendorBusinessEmail() { return vendorBusinessEmail; }
+    public void setVendorBusinessEmail(String vendorBusinessEmail) { this.vendorBusinessEmail = vendorBusinessEmail; }
 }
-
-
-
-

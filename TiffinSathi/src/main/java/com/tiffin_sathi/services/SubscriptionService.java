@@ -57,7 +57,7 @@ public class SubscriptionService {
             if (request.getStartDate() == null) {
                 throw new RuntimeException("Start date is required");
             }
-            LocalDate earliestAllowedDate = LocalDate.now().plusDays(2);
+            LocalDate earliestAllowedDate = LocalDate.now().plusDays(1);
 
             if (request.getStartDate().isBefore(earliestAllowedDate)) {
                 throw new RuntimeException("Start date must be at least 2 days from today.");
@@ -308,7 +308,7 @@ public class SubscriptionService {
 
     @Transactional
     public SubscriptionResponseDTO updateSubscriptionStatus(String subscriptionId, Subscription.SubscriptionStatus status) {
-        Subscription subscription = subscriptionRepository.findById(subscriptionId)
+        Subscription subscription = subscriptionRepository.findByIdWithUser(subscriptionId)
                 .orElseThrow(() -> new RuntimeException("Subscription not found: " + subscriptionId));
 
         Subscription.SubscriptionStatus oldStatus = subscription.getStatus();
@@ -325,6 +325,9 @@ public class SubscriptionService {
         if (status == Subscription.SubscriptionStatus.ACTIVE && oldStatus == Subscription.SubscriptionStatus.PAUSED) {
             regenerateFutureOrders(subscription);
         }
+
+        // Send status update emails
+        sendStatusUpdateEmails(updated, oldStatus.name(), status.name());
 
         return convertToResponseDTO(updated);
     }
@@ -343,11 +346,15 @@ public class SubscriptionService {
             throw new RuntimeException("Only active subscriptions can be paused");
         }
 
+        String oldStatus = subscription.getStatus().name();
         subscription.setStatus(Subscription.SubscriptionStatus.PAUSED);
         Subscription updated = subscriptionRepository.save(subscription);
 
         // Cancel future orders
         cancelFutureOrders(subscriptionId);
+
+        // Send status change emails
+        sendStatusChangeEmails(subscription, oldStatus, "PAUSED", "PAUSED");
 
         return convertToResponseDTO(updated);
     }
@@ -366,35 +373,181 @@ public class SubscriptionService {
             throw new RuntimeException("Only paused subscriptions can be resumed");
         }
 
+        String oldStatus = subscription.getStatus().name();
         subscription.setStatus(Subscription.SubscriptionStatus.ACTIVE);
         Subscription updated = subscriptionRepository.save(subscription);
 
         // Regenerate future orders
         regenerateFutureOrders(subscription);
 
+        // Send status change emails
+        sendStatusChangeEmails(subscription, oldStatus, "ACTIVE", "RESUMED");
+
         return convertToResponseDTO(updated);
     }
 
     @Transactional
-    public void cancelSubscription(String subscriptionId) {
-        Subscription subscription = subscriptionRepository.findById(subscriptionId)
-                .orElseThrow(() -> new RuntimeException("Subscription not found: " + subscriptionId));
+    public SubscriptionResponseDTO cancelSubscription(String subscriptionId, String userEmail) {
+        Subscription subscription = subscriptionRepository.findByIdWithUser(subscriptionId)
+                .orElseThrow(() -> new RuntimeException("Subscription not found"));
 
-        // Only allow cancellation if subscription hasn't started or is active/paused
-        if (subscription.getStartDate().isAfter(LocalDate.now()) ||
-                subscription.getStatus() == Subscription.SubscriptionStatus.ACTIVE ||
-                subscription.getStatus() == Subscription.SubscriptionStatus.PAUSED) {
+        // Verify user owns this subscription
+        if (!subscription.getUser().getEmail().equals(userEmail)) {
+            throw new RuntimeException("You are not authorized to modify this subscription");
+        }
 
-            subscription.setStatus(Subscription.SubscriptionStatus.CANCELLED);
-            subscriptionRepository.save(subscription);
+        // Check if subscription can be cancelled
+        if (subscription.getStatus() == Subscription.SubscriptionStatus.COMPLETED) {
+            throw new RuntimeException("Cannot cancel a completed subscription");
+        }
 
-            // Cancel all future orders
-            cancelFutureOrders(subscriptionId);
+        if (subscription.getStatus() == Subscription.SubscriptionStatus.CANCELLED) {
+            throw new RuntimeException("Subscription is already cancelled");
+        }
 
-            // Refund logic would go here if payment was made
-            paymentService.handleCancellationRefund(subscriptionId);
-        } else {
-            throw new RuntimeException("Cannot cancel subscription that has already ended");
+        String oldStatus = subscription.getStatus().name();
+        subscription.setStatus(Subscription.SubscriptionStatus.CANCELLED);
+        Subscription updated = subscriptionRepository.save(subscription);
+
+        // Cancel all future orders
+        cancelFutureOrders(subscriptionId);
+
+        // Send status change emails
+        sendStatusChangeEmails(subscription, oldStatus, "CANCELLED", "CANCELLED");
+
+        // Refund logic would go here if payment was made
+        paymentService.handleCancellationRefund(subscriptionId);
+
+        return convertToResponseDTO(updated);
+    }
+
+    private void sendStatusChangeEmails(Subscription subscription, String oldStatus, String newStatus, String action) {
+        try {
+            // Send email to user
+            String userSubject = "Subscription " + action + " - TiffinSathi";
+            String userMessage = String.format(
+                    "Dear %s,\n\n" +
+                            "Your subscription has been %s.\n\n" +
+                            "Subscription ID: %s\n" +
+                            "Package: %s\n" +
+                            "Previous Status: %s\n" +
+                            "New Status: %s\n" +
+                            "Start Date: %s\n" +
+                            "End Date: %s\n" +
+                            "Total Amount: Rs. %.2f\n" +
+                            "Vendor: %s\n\n" +
+                            "If you have any questions, please contact our support team.\n\n" +
+                            "Thank you for choosing TiffinSathi!",
+                    subscription.getUser().getUserName(),
+                    action.toLowerCase(),
+                    subscription.getSubscriptionId(),
+                    subscription.getMealPackage().getName(),
+                    oldStatus,
+                    newStatus,
+                    subscription.getStartDate(),
+                    subscription.getEndDate(),
+                    subscription.getTotalAmount(),
+                    subscription.getMealPackage().getVendor().getBusinessName()
+            );
+
+            emailService.sendEmail(
+                    subscription.getUser().getEmail(),
+                    userSubject,
+                    userMessage
+            );
+
+            // Send email to vendor
+            String vendorSubject = "Subscription " + action + " - Customer: " + subscription.getUser().getUserName();
+            String vendorMessage = String.format(
+                    "A subscription has been %s.\n\n" +
+                            "Subscription ID: %s\n" +
+                            "Customer: %s\n" +
+                            "Customer Email: %s\n" +
+                            "Customer Phone: %s\n" +
+                            "Package: %s\n" +
+                            "Previous Status: %s\n" +
+                            "New Status: %s\n" +
+                            "Start Date: %s\n" +
+                            "End Date: %s\n" +
+                            "Delivery Address: %s\n" +
+                            "Total Amount: Rs. %.2f\n\n" +
+                            "Please update your delivery schedule accordingly.",
+                    action.toLowerCase(),
+                    subscription.getSubscriptionId(),
+                    subscription.getUser().getUserName(),
+                    subscription.getUser().getEmail(),
+                    subscription.getUser().getPhoneNumber(),
+                    subscription.getMealPackage().getName(),
+                    oldStatus,
+                    newStatus,
+                    subscription.getStartDate(),
+                    subscription.getEndDate(),
+                    subscription.getDeliveryAddress(),
+                    subscription.getTotalAmount()
+            );
+
+            emailService.sendEmail(
+                    subscription.getMealPackage().getVendor().getBusinessEmail(),
+                    vendorSubject,
+                    vendorMessage
+            );
+
+            System.out.println("Status change emails sent for subscription: " + subscription.getSubscriptionId());
+
+        } catch (Exception e) {
+            System.err.println("Failed to send status change emails: " + e.getMessage());
+        }
+    }
+
+    private void sendStatusUpdateEmails(Subscription subscription, String oldStatus, String newStatus) {
+        try {
+            // User email
+            String userSubject = "Subscription Status Updated - TiffinSathi";
+            String userMessage = String.format(
+                    "Dear %s,\n\n" +
+                            "Your subscription status has been updated.\n\n" +
+                            "Subscription ID: %s\n" +
+                            "Package: %s\n" +
+                            "Previous Status: %s\n" +
+                            "New Status: %s\n" +
+                            "Vendor: %s\n\n" +
+                            "If you have any questions, please contact our support team.\n\n" +
+                            "Thank you for choosing TiffinSathi!",
+                    subscription.getUser().getUserName(),
+                    subscription.getSubscriptionId(),
+                    subscription.getMealPackage().getName(),
+                    oldStatus,
+                    newStatus,
+                    subscription.getMealPackage().getVendor().getBusinessName()
+            );
+
+            emailService.sendEmail(subscription.getUser().getEmail(), userSubject, userMessage);
+
+            // Vendor email
+            String vendorSubject = "Subscription Status Updated - " + subscription.getSubscriptionId();
+            String vendorMessage = String.format(
+                    "Subscription status has been updated.\n\n" +
+                            "Subscription ID: %s\n" +
+                            "Customer: %s\n" +
+                            "Package: %s\n" +
+                            "Previous Status: %s\n" +
+                            "New Status: %s\n\n" +
+                            "Please update your records accordingly.",
+                    subscription.getSubscriptionId(),
+                    subscription.getUser().getUserName(),
+                    subscription.getMealPackage().getName(),
+                    oldStatus,
+                    newStatus
+            );
+
+            emailService.sendEmail(
+                    subscription.getMealPackage().getVendor().getBusinessEmail(),
+                    vendorSubject,
+                    vendorMessage
+            );
+
+        } catch (Exception e) {
+            System.err.println("Failed to send status update emails: " + e.getMessage());
         }
     }
 
@@ -532,6 +685,23 @@ public class SubscriptionService {
             dto.setIncludeCutlery(subscription.getIncludeCutlery());
             dto.setCreatedAt(subscription.getCreatedAt());
 
+            // Add meal package and vendor information
+            if (subscription.getMealPackage() != null) {
+                MealPackage mealPackage = subscription.getMealPackage();
+                dto.setPackageId(mealPackage.getPackageId());
+                dto.setPackageName(mealPackage.getName());
+                dto.setPackageImage(mealPackage.getImage());
+
+                // Add vendor information
+                if (mealPackage.getVendor() != null) {
+                    Vendor vendor = mealPackage.getVendor();
+                    dto.setVendorId(vendor.getVendorId());
+                    dto.setVendorName(vendor.getOwnerName());
+                    dto.setVendorBusinessName(vendor.getBusinessName());
+                    dto.setVendorBusinessEmail(vendor.getBusinessEmail());
+                }
+            }
+
             // Customer information
             if (subscription.getUser() != null) {
                 OrderCustomerDTO customer = new OrderCustomerDTO();
@@ -591,6 +761,20 @@ public class SubscriptionService {
             dto.setStartDate(subscription.getStartDate());
             dto.setEndDate(subscription.getEndDate());
             dto.setTotalAmount(subscription.getTotalAmount());
+
+            // Add meal package and vendor info even in error case
+            if (subscription.getMealPackage() != null) {
+                dto.setPackageId(subscription.getMealPackage().getPackageId());
+                dto.setPackageName(subscription.getMealPackage().getName());
+                dto.setPackageImage(subscription.getMealPackage().getImage());
+
+                if (subscription.getMealPackage().getVendor() != null) {
+                    Vendor vendor = subscription.getMealPackage().getVendor();
+                    dto.setVendorId(vendor.getVendorId());
+                    dto.setVendorBusinessName(vendor.getBusinessName());
+                }
+            }
+
             return dto;
         }
     }
