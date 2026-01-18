@@ -83,9 +83,9 @@ public class Subscription {
     @JsonManagedReference
     private List<SubscriptionDay> subscriptionDays = new ArrayList<>();
 
-    @OneToOne(mappedBy = "subscription", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "subscription", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonManagedReference
-    private Payment payment;
+    private List<Payment> payments = new ArrayList<>();  // Changed from single Payment to List<Payment>
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -110,6 +110,29 @@ public class Subscription {
         this.user = user;
         this.mealPackage = mealPackage;
         this.status = status;
+    }
+
+    // Helper method to get the latest payment (useful for backward compatibility)
+    public Payment getPayment() {
+        if (payments == null || payments.isEmpty()) {
+            return null;
+        }
+        // Return the most recent payment by creation date
+        return payments.stream()
+                .sorted((p1, p2) -> p2.getCreatedAt().compareTo(p1.getCreatedAt()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    // Helper method to set/add a payment (maintains backward compatibility)
+    public void setPayment(Payment payment) {
+        if (payments == null) {
+            payments = new ArrayList<>();
+        }
+        // Remove existing payments with same ID to avoid duplicates
+        payments.removeIf(p -> p.getPaymentId().equals(payment.getPaymentId()));
+        payments.add(payment);
+        payment.setSubscription(this);
     }
 
     // Getters and Setters
@@ -173,8 +196,8 @@ public class Subscription {
     public List<SubscriptionDay> getSubscriptionDays() { return subscriptionDays; }
     public void setSubscriptionDays(List<SubscriptionDay> subscriptionDays) { this.subscriptionDays = subscriptionDays; }
 
-    public Payment getPayment() { return payment; }
-    public void setPayment(Payment payment) { this.payment = payment; }
+    public List<Payment> getPayments() { return payments; }
+    public void setPayments(List<Payment> payments) { this.payments = payments; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

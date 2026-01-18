@@ -10,6 +10,7 @@ public class AdminPaymentDTO {
     private String transactionId;
     private String gatewayTransactionId;
     private LocalDateTime paidAt;
+    private String paymentType; // Added field for payment type (REGULAR, EDIT, REFUND, etc.)
 
     // Subscription info
     private String subscriptionId;
@@ -36,7 +37,8 @@ public class AdminPaymentDTO {
     public AdminPaymentDTO() {}
 
     public AdminPaymentDTO(String paymentId, String paymentMethod, String paymentStatus,
-                           Double amount, String transactionId, String gatewayTransactionId, LocalDateTime paidAt,
+                           Double amount, String transactionId, String gatewayTransactionId,
+                           LocalDateTime paidAt, String paymentType,
                            String subscriptionId, String subscriptionStatus,
                            String packageId, String packageName, Double packagePrice, Integer durationDays,
                            String userId, String userName, String userEmail, String userPhone,
@@ -48,6 +50,7 @@ public class AdminPaymentDTO {
         this.transactionId = transactionId;
         this.gatewayTransactionId = gatewayTransactionId;
         this.paidAt = paidAt;
+        this.paymentType = paymentType;
         this.subscriptionId = subscriptionId;
         this.subscriptionStatus = subscriptionStatus;
         this.packageId = packageId;
@@ -67,9 +70,6 @@ public class AdminPaymentDTO {
     public String getPaymentId() { return paymentId; }
     public void setPaymentId(String paymentId) { this.paymentId = paymentId; }
 
-    public String getGatewayTransactionId() { return gatewayTransactionId; }
-    public void setGatewayTransactionId(String gatewayTransactionId) { this.gatewayTransactionId = gatewayTransactionId; }
-
     public String getPaymentMethod() { return paymentMethod; }
     public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
 
@@ -82,8 +82,14 @@ public class AdminPaymentDTO {
     public String getTransactionId() { return transactionId; }
     public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
 
+    public String getGatewayTransactionId() { return gatewayTransactionId; }
+    public void setGatewayTransactionId(String gatewayTransactionId) { this.gatewayTransactionId = gatewayTransactionId; }
+
     public LocalDateTime getPaidAt() { return paidAt; }
     public void setPaidAt(LocalDateTime paidAt) { this.paidAt = paidAt; }
+
+    public String getPaymentType() { return paymentType; } // Getter
+    public void setPaymentType(String paymentType) { this.paymentType = paymentType; } // Setter - This was missing
 
     public String getSubscriptionId() { return subscriptionId; }
     public void setSubscriptionId(String subscriptionId) { this.subscriptionId = subscriptionId; }
@@ -123,4 +129,32 @@ public class AdminPaymentDTO {
 
     public String getVendorEmail() { return vendorEmail; }
     public void setVendorEmail(String vendorEmail) { this.vendorEmail = vendorEmail; }
+
+    // Optional: toString method for debugging
+    @Override
+    public String toString() {
+        return "AdminPaymentDTO{" +
+                "paymentId='" + paymentId + '\'' +
+                ", paymentMethod='" + paymentMethod + '\'' +
+                ", paymentStatus='" + paymentStatus + '\'' +
+                ", amount=" + amount +
+                ", transactionId='" + transactionId + '\'' +
+                ", gatewayTransactionId='" + gatewayTransactionId + '\'' +
+                ", paidAt=" + paidAt +
+                ", paymentType='" + paymentType + '\'' +
+                ", subscriptionId='" + subscriptionId + '\'' +
+                ", subscriptionStatus='" + subscriptionStatus + '\'' +
+                ", packageId='" + packageId + '\'' +
+                ", packageName='" + packageName + '\'' +
+                ", packagePrice=" + packagePrice +
+                ", durationDays=" + durationDays +
+                ", userId='" + userId + '\'' +
+                ", userName='" + userName + '\'' +
+                ", userEmail='" + userEmail + '\'' +
+                ", userPhone='" + userPhone + '\'' +
+                ", vendorId='" + vendorId + '\'' +
+                ", vendorName='" + vendorName + '\'' +
+                ", vendorEmail='" + vendorEmail + '\'' +
+                '}';
+    }
 }
