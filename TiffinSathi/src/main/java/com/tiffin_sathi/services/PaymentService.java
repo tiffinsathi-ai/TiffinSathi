@@ -189,75 +189,111 @@ public class PaymentService {
     private PaymentInitiationResponse initiateEsewaPayment(Payment payment) {
         try {
             String amountStr = String.format("%.2f", payment.getAmount());
+            String taxAmount = "0";
+            String totalAmount = amountStr;
 
-            // Generate unique transaction_uuid for eSewa
-            String transactionUuid = UUID.randomUUID().toString();
+            // IMPORTANT: eSewa requires transaction_uuid to be unique and in specific format
+            // Using a timestamp-based UUID for better compatibility
+            String transactionUuid = "TS" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
-            // Generate signature
-            String dataToSign = "total_amount=" + amountStr +
+            // Get merchant code from config
+            String productCode = paymentGatewayConfig.getEsewaMerchantCode();
+
+            // Prepare data for signature - MUST match exactly what eSewa expects
+            // The order and format is critical!
+            String dataToSign = "total_amount=" + totalAmount +
                     ",transaction_uuid=" + transactionUuid +
-                    ",product_code=" + paymentGatewayConfig.getEsewaMerchantCode();
+                    ",product_code=" + productCode;
+
+            System.out.println("eSewa data to sign: " + dataToSign);
+
+            // Generate HMAC SHA256 signature
             String signature = generateHmacSha256(dataToSign, paymentGatewayConfig.getEsewaSecretKey());
 
-            // Prepare payment data
+            System.out.println("Generated eSewa signature: " + signature);
+
+            // Prepare payment data EXACTLY as eSewa expects
             Map<String, Object> paymentData = new HashMap<>();
-            paymentData.put("amount", amountStr);
-            paymentData.put("tax_amount", "0");
-            paymentData.put("total_amount", amountStr);
+            paymentData.put("amount", totalAmount);
+            paymentData.put("tax_amount", taxAmount);
+            paymentData.put("total_amount", totalAmount);
             paymentData.put("transaction_uuid", transactionUuid);
-            paymentData.put("product_code", paymentGatewayConfig.getEsewaMerchantCode());
+            paymentData.put("product_code", productCode);
             paymentData.put("product_service_charge", "0");
             paymentData.put("product_delivery_charge", "0");
-            paymentData.put("success_url", paymentGatewayConfig.getEsewaSuccessUrl());
-            paymentData.put("failure_url", paymentGatewayConfig.getEsewaFailureUrl());
+
+            // Use HTTPS for production, HTTP for local testing
+            String baseUrl = "http://localhost:8080"; // Change to your actual base URL
+            paymentData.put("success_url", baseUrl + "/api/payments/callback/esewa");
+            paymentData.put("failure_url", baseUrl + "/api/payments/callback/esewa/failure");
+
+            // CRITICAL: These fields must be exactly as eSewa expects
             paymentData.put("signed_field_names", "total_amount,transaction_uuid,product_code");
             paymentData.put("signature", signature);
+
+            // Add optional fields for better compatibility
+            paymentData.put("transaction_code", transactionUuid);
+            paymentData.put("customer_name", payment.getSubscription().getUser().getUserName());
+            paymentData.put("customer_email", payment.getSubscription().getUser().getEmail());
+            paymentData.put("customer_phone", payment.getSubscription().getUser().getPhoneNumber());
 
             // Store the transaction_uuid as gatewayTransactionId for reference
             payment.setGatewayTransactionId(transactionUuid);
             paymentRepository.save(payment);
 
+            System.out.println("Payment data for eSewa: " + paymentData);
+
             // Create response
             PaymentInitiationResponse response = new PaymentInitiationResponse();
             response.setPaymentId(payment.getPaymentId());
             response.setPaymentMethod("ESEWA");
-            response.setPaymentUrl(paymentGatewayConfig.getEsewaBaseUrl());
+            response.setPaymentUrl(paymentGatewayConfig.getEsewaBaseUrl()); // eSewa payment page URL
             response.setPaymentData(paymentData);
-            response.setMessage("eSewa payment initiated successfully");
+            response.setMessage("eSewa payment initiated successfully. Please proceed with payment on eSewa.");
 
             return response;
 
         } catch (Exception e) {
-            throw new RuntimeException("Failed to initiate eSewa payment: " + e.getMessage());
+            System.err.println("Failed to initiate eSewa payment: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to initiate eSewa payment. Please check your eSewa configuration: " + e.getMessage());
         }
     }
 
     private PaymentInitiationResponse initiateEsewaPaymentForEdit(Payment payment) {
         try {
             String amountStr = String.format("%.2f", payment.getAmount());
-            String transactionUuid = UUID.randomUUID().toString();
+            String taxAmount = "0";
+            String totalAmount = amountStr;
 
-            // Generate signature
-            String dataToSign = "total_amount=" + amountStr +
+            // Unique transaction ID for edit
+            String transactionUuid = "EDIT_" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+            String productCode = paymentGatewayConfig.getEsewaMerchantCode();
+
+            String dataToSign = "total_amount=" + totalAmount +
                     ",transaction_uuid=" + transactionUuid +
-                    ",product_code=" + paymentGatewayConfig.getEsewaMerchantCode();
+                    ",product_code=" + productCode;
+
             String signature = generateHmacSha256(dataToSign, paymentGatewayConfig.getEsewaSecretKey());
 
-            // Prepare payment data with edit-specific callback
+            // Prepare payment data
             Map<String, Object> paymentData = new HashMap<>();
-            paymentData.put("amount", amountStr);
-            paymentData.put("tax_amount", "0");
-            paymentData.put("total_amount", amountStr);
+            paymentData.put("amount", totalAmount);
+            paymentData.put("tax_amount", taxAmount);
+            paymentData.put("total_amount", totalAmount);
             paymentData.put("transaction_uuid", transactionUuid);
-            paymentData.put("product_code", paymentGatewayConfig.getEsewaMerchantCode());
+            paymentData.put("product_code", productCode);
             paymentData.put("product_service_charge", "0");
             paymentData.put("product_delivery_charge", "0");
-            paymentData.put("success_url", "http://localhost:8080/api/payments/callback/esewa/edit");
-            paymentData.put("failure_url", "http://localhost:8080/api/payments/callback/esewa/edit/failure");
+
+            String baseUrl = "http://localhost:8080";
+            paymentData.put("success_url", baseUrl + "/api/payments/callback/esewa/edit");
+            paymentData.put("failure_url", baseUrl + "/api/payments/callback/esewa/edit/failure");
+
             paymentData.put("signed_field_names", "total_amount,transaction_uuid,product_code");
             paymentData.put("signature", signature);
 
-            // Store transaction_uuid as gatewayTransactionId
+            // Store transaction_uuid
             payment.setGatewayTransactionId(transactionUuid);
             paymentRepository.save(payment);
 
@@ -300,7 +336,13 @@ public class PaymentService {
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
             String khaltiInitiateUrl = paymentGatewayConfig.getKhaltiBaseUrl() + "/epayment/initiate/";
+            System.out.println("Calling Khalti URL: " + khaltiInitiateUrl);
+            System.out.println("Khalti request body: " + body);
+
             ResponseEntity<Map> response = restTemplate.postForEntity(khaltiInitiateUrl, entity, Map.class);
+
+            System.out.println("Khalti response status: " + response.getStatusCode());
+            System.out.println("Khalti response body: " + response.getBody());
 
             Map<String, Object> responseBody = response.getBody();
 
@@ -320,10 +362,13 @@ public class PaymentService {
 
                 return paymentResponse;
             } else {
-                throw new RuntimeException("Failed to initiate Khalti payment");
+                System.err.println("Failed to initiate Khalti payment. Status: " + response.getStatusCode());
+                throw new RuntimeException("Failed to initiate Khalti payment. Please try again.");
             }
 
         } catch (Exception e) {
+            System.err.println("Failed to initiate Khalti payment: " + e.getMessage());
+            e.printStackTrace();
             throw new RuntimeException("Failed to initiate Khalti payment: " + e.getMessage());
         }
     }
@@ -451,71 +496,75 @@ public class PaymentService {
                 throw new RuntimeException("No transaction_uuid found in eSewa response");
             }
 
-            // Find payment by gatewayTransactionId (which we stored as transaction_uuid during initiation)
-            // Try by gatewayTransactionId first. If not found, try transactionId (fallback)
+            // Try to find payment by gatewayTransactionId first
             Payment payment = paymentRepository.findByGatewayTransactionId(transactionUuid).orElse(null);
-            if (payment == null) {
-                // Try finding by transaction_code (sometimes eSewa returns transaction_code instead)
-                if (transactionCode != null && !transactionCode.trim().isEmpty()) {
-                    payment = paymentRepository.findByTransactionId(transactionCode).orElse(null);
-                }
-                // Fallback: try transaction_uuid as transactionId
-                if (payment == null) {
-                    payment = paymentRepository.findByTransactionId(transactionUuid).orElse(null);
-                }
+
+            if (payment == null && transactionCode != null) {
+                // Try by transaction_code
+                payment = paymentRepository.findByTransactionId(transactionCode).orElse(null);
             }
 
             if (payment == null) {
-                throw new RuntimeException("Payment not found for transaction_uuid: " + transactionUuid);
+                // Last resort: try by transaction_uuid as transactionId
+                payment = paymentRepository.findByTransactionId(transactionUuid).orElse(null);
             }
 
-            System.out.println("Found payment: " + payment.getPaymentId() + " with status: " + payment.getPaymentStatus());
+            if (payment == null) {
+                System.err.println("Payment not found for any identifier. transaction_uuid: " + transactionUuid +
+                        ", transaction_code: " + transactionCode);
+                throw new RuntimeException("Payment not found. Please contact support.");
+            }
+
+            System.out.println("Found payment: " + payment.getPaymentId() +
+                    " with current status: " + payment.getPaymentStatus() +
+                    " and type: " + payment.getPaymentType());
 
             if ("COMPLETE".equalsIgnoreCase(status)) {
                 // Payment successful
                 payment.setPaymentStatus(Payment.PaymentStatus.COMPLETED);
                 payment.setPaidAt(LocalDateTime.now());
+
                 // Store eSewa transaction code if available
                 if (transactionCode != null && !transactionCode.trim().isEmpty()) {
                     payment.setTransactionId(transactionCode);
                 }
-                // Ensure we persist the gateway transaction id for future lookups
+
+                // Ensure gateway transaction ID is stored
                 if (payment.getGatewayTransactionId() == null || payment.getGatewayTransactionId().isEmpty()) {
                     payment.setGatewayTransactionId(transactionUuid);
                 }
+
                 payment.setPaymentGatewayResponse(jsonData);
 
-                // Save payment FIRST
-                paymentRepository.save(payment);
-                System.out.println("Payment saved with COMPLETED status for: " + payment.getPaymentId());
+                // Save payment
+                Payment updatedPayment = paymentRepository.save(payment);
+                System.out.println("Payment saved with COMPLETED status for: " + updatedPayment.getPaymentId());
 
-                // Check if this is an edit payment
-                if ("EDIT".equals(payment.getPaymentType())) {
-                    // For edit payments, we don't activate subscription here
-                    System.out.println("Edit payment completed for: " + payment.getPaymentId());
-                } else {
-                    // Regular payment flow - activate subscription if not already active
-                    Subscription subscription = payment.getSubscription();
-                    if (subscription != null && subscription.getStatus() != Subscription.SubscriptionStatus.ACTIVE) {
-                        subscription.setStatus(Subscription.SubscriptionStatus.ACTIVE);
-                        subscriptionRepository.save(subscription);
-                        System.out.println("Subscription activated for: " + subscription.getSubscriptionId());
-                    }
-                    System.out.println("Regular payment completed: " + payment.getPaymentId());
+                // Check payment type
+                if ("EDIT".equals(updatedPayment.getPaymentType())) {
+                    System.out.println("Edit payment completed for: " + updatedPayment.getPaymentId());
+                    return updatedPayment;
                 }
 
-                System.out.println("Payment status updated to COMPLETED for: " + payment.getPaymentId());
+                // Activate subscription for regular payments
+                Subscription subscription = updatedPayment.getSubscription();
+                if (subscription != null && subscription.getStatus() != Subscription.SubscriptionStatus.ACTIVE) {
+                    subscription.setStatus(Subscription.SubscriptionStatus.ACTIVE);
+                    subscriptionRepository.save(subscription);
+                    System.out.println("Subscription activated for: " + subscription.getSubscriptionId());
+                }
+
+                System.out.println("Regular payment completed: " + updatedPayment.getPaymentId());
+                return updatedPayment;
             } else {
                 // Payment failed
                 payment.setPaymentStatus(Payment.PaymentStatus.FAILED);
                 payment.setPaymentGatewayResponse(jsonData);
-                paymentRepository.save(payment);
+                Payment failedPayment = paymentRepository.save(payment);
 
-                System.out.println("eSewa payment failed for: " + payment.getPaymentId());
+                System.out.println("eSewa payment failed for: " + failedPayment.getPaymentId());
                 throw new RuntimeException("Payment failed with status: " + status);
             }
-
-            return payment;
 
         } catch (Exception e) {
             System.err.println("Error processing eSewa callback: " + e.getMessage());
@@ -536,9 +585,12 @@ public class PaymentService {
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(headers);
 
             String verifyUrl = paymentGatewayConfig.getKhaltiBaseUrl() + "/epayment/lookup/?pidx=" + pidx;
+            System.out.println("Verifying Khalti payment at: " + verifyUrl);
+
             ResponseEntity<Map> response = restTemplate.postForEntity(verifyUrl, entity, Map.class);
 
-            System.out.println("Khalti verification response: " + response.getBody());
+            System.out.println("Khalti verification response status: " + response.getStatusCode());
+            System.out.println("Khalti verification response body: " + response.getBody());
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 Map<String, Object> responseBody = response.getBody();
@@ -548,7 +600,7 @@ public class PaymentService {
                     // Find payment by pidx
                     Payment payment = paymentRepository.findByGatewayTransactionId(pidx).orElse(null);
                     if (payment == null) {
-                        // Try to find by purchase_order_id present in responseBody (fallback when gatewayTransactionId wasn't stored)
+                        // Try to find by purchase_order_id
                         Object purchaseOrderObj = responseBody.get("purchase_order_id");
                         if (purchaseOrderObj != null) {
                             String purchaseOrderId = purchaseOrderObj.toString();
@@ -569,40 +621,40 @@ public class PaymentService {
                         payment.setTransactionId(transactionIdObj.toString());
                     }
 
-                    // Ensure gatewayTransactionId (pidx) is stored for future
+                    // Ensure gatewayTransactionId is stored
                     if (payment.getGatewayTransactionId() == null || payment.getGatewayTransactionId().isEmpty()) {
                         payment.setGatewayTransactionId(pidx);
                     }
 
                     payment.setPaymentGatewayResponse(responseBody.toString());
 
-                    // Save payment FIRST
-                    paymentRepository.save(payment);
-                    System.out.println("Payment saved with COMPLETED status for: " + payment.getPaymentId());
+                    // Save payment
+                    Payment updatedPayment = paymentRepository.save(payment);
+                    System.out.println("Payment saved with COMPLETED status for: " + updatedPayment.getPaymentId());
 
-                    // Check if this is an edit payment
-                    if ("EDIT".equals(payment.getPaymentType())) {
-                        // For edit payments, we don't activate subscription here
-                        System.out.println("Edit payment completed for payment ID: " + payment.getPaymentId());
-                    } else {
-                        // Regular payment flow - activate subscription if not already active
-                        Subscription subscription = payment.getSubscription();
-                        if (subscription != null && subscription.getStatus() != Subscription.SubscriptionStatus.ACTIVE) {
-                            subscription.setStatus(Subscription.SubscriptionStatus.ACTIVE);
-                            subscriptionRepository.save(subscription);
-                            System.out.println("Subscription activated for: " + subscription.getSubscriptionId());
-                        }
-                        System.out.println("Regular payment completed: " + payment.getPaymentId());
+                    // Check payment type
+                    if ("EDIT".equals(updatedPayment.getPaymentType())) {
+                        System.out.println("Edit payment completed for payment ID: " + updatedPayment.getPaymentId());
+                        return updatedPayment;
                     }
 
-                    return payment;
+                    // Activate subscription for regular payments
+                    Subscription subscription = updatedPayment.getSubscription();
+                    if (subscription != null && subscription.getStatus() != Subscription.SubscriptionStatus.ACTIVE) {
+                        subscription.setStatus(Subscription.SubscriptionStatus.ACTIVE);
+                        subscriptionRepository.save(subscription);
+                        System.out.println("Subscription activated for: " + subscription.getSubscriptionId());
+                    }
+
+                    System.out.println("Regular payment completed: " + updatedPayment.getPaymentId());
+                    return updatedPayment;
                 } else {
                     // Update payment status to failed
                     Payment payment = paymentRepository.findByGatewayTransactionId(pidx).orElse(null);
                     if (payment != null) {
                         payment.setPaymentStatus(Payment.PaymentStatus.FAILED);
                         payment.setPaymentGatewayResponse(responseBody.toString());
-                        paymentRepository.save(payment);
+                        Payment failedPayment = paymentRepository.save(payment);
                         System.out.println("Payment marked as FAILED for pidx: " + pidx);
                         throw new RuntimeException("Payment not completed. Status: " + status);
                     } else {
@@ -610,7 +662,7 @@ public class PaymentService {
                     }
                 }
             } else {
-                System.err.println("Failed to verify Khalti payment");
+                System.err.println("Failed to verify Khalti payment. Status: " + response.getStatusCode());
                 throw new RuntimeException("Failed to verify Khalti payment");
             }
 
@@ -741,6 +793,7 @@ public class PaymentService {
         }
     }
 
+    // FIXED: Changed parameter type from lowercase 'subscription' to uppercase 'Subscription'
     private void updateSubscriptionTotalAmount(Subscription subscription, SubscriptionEditHistory editHistory) {
         try {
             if (editHistory.getAdditionalAmount() != null && editHistory.getAdditionalAmount() > 0) {
@@ -1116,10 +1169,14 @@ public class PaymentService {
 
     private String generateHmacSha256(String data, String secret) {
         try {
+            // IMPORTANT: eSewa expects the data string to be signed exactly as provided
+            // Do not modify the data string in any way
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(secret.getBytes(), "HmacSHA256"));
             return Base64.getEncoder().encodeToString(mac.doFinal(data.getBytes()));
         } catch (Exception e) {
+            System.err.println("Failed to generate HMAC signature. Data: " + data);
+            e.printStackTrace();
             throw new RuntimeException("Failed to generate HMAC signature", e);
         }
     }
@@ -1274,4 +1331,3 @@ public class PaymentService {
                 .orElseThrow(() -> new RuntimeException("Payment not found for transactionId: " + transactionId));
     }
 }
-
