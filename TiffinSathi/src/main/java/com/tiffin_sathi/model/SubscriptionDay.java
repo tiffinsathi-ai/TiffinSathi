@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 @Entity
 @Table(name = "subscription_days")
 public class SubscriptionDay {
@@ -15,7 +18,9 @@ public class SubscriptionDay {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "subscription_id", nullable = false)
+    @JsonBackReference  // <-- add this
     private Subscription subscription;
+
 
     @Column(name = "day_of_week", nullable = false, length = 20)
     private String dayOfWeek; // MONDAY, TUESDAY, etc.
@@ -24,6 +29,7 @@ public class SubscriptionDay {
     private Boolean isEnabled;
 
     @OneToMany(mappedBy = "subscriptionDay", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonManagedReference  // <-- add this
     private List<SubscriptionDayMeal> subscriptionDayMeals = new ArrayList<>();
 
     // Constructors

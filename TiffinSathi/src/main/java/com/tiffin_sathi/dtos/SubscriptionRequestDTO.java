@@ -1,6 +1,8 @@
 package com.tiffin_sathi.dtos;
 
 import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.FutureOrPresent;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -19,7 +21,7 @@ public class SubscriptionRequestDTO {
     private String discountCode;
     private String paymentMethod;
 
-    @Future(message = "Start date must be in the future")
+    @FutureOrPresent(message = "Start date must be in the future")
     private LocalDate startDate;
 
     private List<SubscriptionDayDTO> schedule;

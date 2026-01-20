@@ -1,5 +1,7 @@
 package com.tiffin_sathi.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -13,7 +15,9 @@ public class SubscriptionDayMeal {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "subscription_day_id", nullable = false)
+    @JsonBackReference  // <-- add this
     private SubscriptionDay subscriptionDay;
+
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "set_id", nullable = false)

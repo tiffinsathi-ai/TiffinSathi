@@ -80,7 +80,7 @@ public class Subscription {
     private Boolean includeCutlery = false;
 
     @OneToMany(mappedBy = "subscription", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JsonManagedReference
+    @JsonManagedReference  // <-- add this
     private List<SubscriptionDay> subscriptionDays = new ArrayList<>();
 
     @OneToMany(mappedBy = "subscription", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
