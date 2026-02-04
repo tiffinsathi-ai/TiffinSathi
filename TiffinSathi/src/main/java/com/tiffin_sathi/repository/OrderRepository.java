@@ -12,7 +12,6 @@ import java.util.List;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
-
     @Query("SELECT o FROM Order o LEFT JOIN FETCH o.orderMeals om LEFT JOIN FETCH om.mealSet WHERE o.deliveryDate = :deliveryDate")
     List<Order> findByDeliveryDate(@Param("deliveryDate") LocalDate deliveryDate);
 
@@ -37,4 +36,18 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     List<Order> findByDeliveryDateAndDeliveryPersonId(LocalDate deliveryDate, String deliveryPersonId);
 
+    // Add these methods for subscription operations
+    @Query("SELECT o FROM Order o WHERE o.subscription.subscriptionId = :subscriptionId")
+    List<Order> findBySubscriptionSubscriptionId(@Param("subscriptionId") String subscriptionId);
+
+    @Query("SELECT o FROM Order o WHERE o.subscription.subscriptionId = :subscriptionId AND o.deliveryDate >= :date")
+    List<Order> findBySubscriptionSubscriptionIdAndDeliveryDateGreaterThanEqual(
+            @Param("subscriptionId") String subscriptionId,
+            @Param("date") LocalDate date);
+
+    @Query("SELECT o FROM Order o WHERE o.subscription.subscriptionId = :subscriptionId AND o.deliveryDate >= :date AND o.status IN :statuses")
+    List<Order> findBySubscriptionSubscriptionIdAndDeliveryDateGreaterThanEqualAndStatusIn(
+            @Param("subscriptionId") String subscriptionId,
+            @Param("date") LocalDate date,
+            @Param("statuses") List<Order.OrderStatus> statuses);
 }

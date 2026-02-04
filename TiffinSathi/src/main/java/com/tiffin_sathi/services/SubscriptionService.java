@@ -42,6 +42,9 @@ public class SubscriptionService {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private PaymentRepository paymentRepository;
+
     @Transactional
     public SubscriptionResponseDTO createSubscription(SubscriptionRequestDTO request, String currentUserEmail) {
         try {
@@ -815,6 +818,24 @@ public class SubscriptionService {
             return dto;
         }
     }
+
+    @Transactional
+    public void completeSubscriptionAfterPayment(String paymentId) {
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new RuntimeException("Payment not found"));
+
+        if (payment.getPaymentStatus() != Payment.PaymentStatus.COMPLETED) {
+            throw new RuntimeException("Payment not completed");
+        }
+
+        Subscription subscription = payment.getSubscription();
+
+        // Activate subscription
+        subscription.setStatus(Subscription.SubscriptionStatus.ACTIVE);
+
+        subscriptionRepository.save(subscription);
+    }
+
 
     private String generateSubscriptionId() {
         return "SUB" + LocalDate.now().getYear() +
