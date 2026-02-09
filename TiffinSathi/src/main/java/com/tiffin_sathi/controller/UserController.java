@@ -105,7 +105,7 @@ public class UserController {
         }
     }
 
-    //     Update user profile by ID
+    // Update user profile by ID
     @PutMapping("profile/{userId}")
     public ResponseEntity<?> updateUser(@PathVariable Long userId, @Valid @RequestBody UpdateUserDTO updateUserDTO) {
         try {
@@ -166,7 +166,6 @@ public class UserController {
                 dto.getNewPassword(), dto.getConfirmPassword());
         return ResponseEntity.ok(message);
     }
-
 
     // Admin only - Delete user
     @DeleteMapping("/{userId}")

@@ -11,7 +11,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 @Entity
@@ -88,7 +87,8 @@ public class User implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        // User account is locked when status is BLOCK
+        return status != Status.BLOCK;
     }
 
     @Override
@@ -98,6 +98,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
+        // User is enabled only when status is ACTIVE
         return status == Status.ACTIVE;
     }
 
