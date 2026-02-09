@@ -59,8 +59,17 @@ public class UserService {
     public User updateUserStatus(Long userId, Status status) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+        // Set the status directly from the Status enum
         user.setStatus(status);
-        return userRepository.save(user);
+
+        // Save and return the updated user
+        User updatedUser = userRepository.save(user);
+
+        // Log for debugging
+        System.out.println("Updated user " + userId + " status to: " + status);
+
+        return updatedUser;
     }
 
     public void deleteUser(Long userId) {
@@ -146,6 +155,7 @@ public class UserService {
 
         return userRepository.save(newUser);
     }
+
     private String generateTempPassword() {
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         java.util.Random random = new java.util.Random();
