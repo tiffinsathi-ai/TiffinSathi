@@ -24,6 +24,7 @@ public class VendorRegistrationTest {
         String time = String.valueOf(System.currentTimeMillis());
 
         // ===== Step 1: Business Info =====
+        driver.findElement(By.xpath("//input[@type='file']")).sendKeys("C:\\Users\\nepac\\Downloads\\meal4.jpg");
         driver.findElement(By.name("businessName")).sendKeys("Test Tiffin " + time);
         driver.findElement(By.name("ownerName")).sendKeys("Test Owner");
         driver.findElement(By.name("email")).sendKeys("vendor" + time + "@mail.com");
@@ -54,6 +55,7 @@ public class VendorRegistrationTest {
         driver.findElement(By.name("bankName")).sendKeys("Test Bank");
         driver.findElement(By.name("accountNumber")).sendKeys("1234567890");
         driver.findElement(By.name("ifscCode")).sendKeys("TEST0001");
+        driver.findElement(By.name("fssaiNumber")).sendKeys("FSSAI123456789");
         driver.findElement(By.name("panNumber")).sendKeys("ABCDE1234F");
         driver.findElement(By.xpath("//button[contains(text(),'Next')]")).click();
 
@@ -61,9 +63,9 @@ public class VendorRegistrationTest {
 
         // ===== Step 5: Documents =====
         driver.findElement(By.id("fssaiLicense"))
-                .sendKeys("C:\\Users\\nepac\\OneDrive\\Documents\\fssai.pdf");
+                .sendKeys("C:\\Users\\nepac\\Downloads\\meal4.jpg");
         driver.findElement(By.id("panCard"))
-                .sendKeys("C:\\Users\\nepac\\OneDrive\\Documents\\pan.pdf");
+                .sendKeys("C:\\Users\\nepac\\Downloads\\meal4.jpg");
 
         driver.findElement(By.id("terms")).click();
         driver.findElement(By.xpath("//button[contains(text(),'Submit')]")).click();
