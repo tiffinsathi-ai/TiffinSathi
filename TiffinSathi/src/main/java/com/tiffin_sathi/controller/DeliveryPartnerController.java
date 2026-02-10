@@ -9,7 +9,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/delivery-partners")
@@ -30,10 +32,8 @@ public class DeliveryPartnerController {
             if (vendorId == null) {
                 return ResponseEntity.badRequest().body("Vendor not found");
             }
-            DeliveryPartnerDTO deliveryPartner = deliveryPartnerService.createDeliveryPartner(vendorId, createDeliveryPartnerDTO);
-
-            // Return the delivery partner with temporary password
-            return ResponseEntity.ok(deliveryPartner);
+            Map<String, Object> response = deliveryPartnerService.createDeliveryPartner(vendorId, createDeliveryPartnerDTO);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -48,8 +48,8 @@ public class DeliveryPartnerController {
             if (vendorId == null) {
                 return ResponseEntity.badRequest().body("Vendor not found");
             }
-            String message = deliveryPartnerService.resetDeliveryPartnerPassword(partnerId, vendorId);
-            return ResponseEntity.ok(message);
+            Map<String, Object> response = deliveryPartnerService.resetDeliveryPartnerPassword(partnerId, vendorId);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -65,6 +65,40 @@ public class DeliveryPartnerController {
             }
             List<DeliveryPartnerDTO> partners = deliveryPartnerService.getDeliveryPartnersByVendor(vendorId);
             return ResponseEntity.ok(partners);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/vendor/stats")
+    @PreAuthorize("hasRole('VENDOR')")
+    public ResponseEntity<?> getDeliveryStats() {
+        try {
+            Long vendorId = vendorContext.getCurrentVendorId();
+            if (vendorId == null) {
+                return ResponseEntity.badRequest().body("Vendor not found");
+            }
+
+            List<DeliveryPartnerDTO> partners = deliveryPartnerService.getDeliveryPartnersByVendor(vendorId);
+
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("totalPartners", partners.size());
+            stats.put("activeCount", partners.stream().filter(p ->
+                    p.getIsActive() && "AVAILABLE".equals(p.getAvailabilityStatus())).count());
+            stats.put("busyCount", partners.stream().filter(p ->
+                    p.getIsActive() && "BUSY".equals(p.getAvailabilityStatus())).count());
+            stats.put("inactiveCount", partners.stream().filter(p -> !p.getIsActive()).count());
+
+            // Calculate growth rate (last month)
+            long oneMonthAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000);
+            long newPartners = partners.stream()
+                    .filter(p -> p.getCreatedAt() != null &&
+                            p.getCreatedAt().toEpochSecond(java.time.ZoneOffset.UTC) * 1000 > oneMonthAgo)
+                    .count();
+            stats.put("growthRate", partners.size() > 0 ?
+                    Math.round((newPartners * 100.0) / partners.size()) : 0);
+
+            return ResponseEntity.ok(stats);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -203,8 +237,8 @@ public class DeliveryPartnerController {
             if (vendorId == null) {
                 return ResponseEntity.badRequest().body("Vendor not found");
             }
-            deliveryPartnerService.toggleDeliveryPartnerAvailability(partnerId, vendorId);
-            return ResponseEntity.ok("Delivery partner availability toggled successfully");
+            DeliveryPartnerDTO partner = deliveryPartnerService.toggleDeliveryPartnerAvailability(partnerId, vendorId);
+            return ResponseEntity.ok(partner);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
