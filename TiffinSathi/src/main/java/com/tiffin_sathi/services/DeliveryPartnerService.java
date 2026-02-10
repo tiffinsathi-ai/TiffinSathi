@@ -10,14 +10,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
 
 @Service
 public class DeliveryPartnerService {
 
-    @Autowired  
+    @Autowired
     private DeliveryPartnerRepository deliveryPartnerRepository;
 
     @Autowired
@@ -30,7 +32,7 @@ public class DeliveryPartnerService {
     private EmailService emailService;
 
     @Transactional
-    public DeliveryPartnerDTO createDeliveryPartner(Long vendorId, CreateDeliveryPartnerDTO createDeliveryPartnerDTO) {
+    public Map<String, Object> createDeliveryPartner(Long vendorId, CreateDeliveryPartnerDTO createDeliveryPartnerDTO) {
         Vendor vendor = vendorRepository.findById(vendorId)
                 .orElseThrow(() -> new RuntimeException("Vendor not found with id: " + vendorId));
 
@@ -56,7 +58,7 @@ public class DeliveryPartnerService {
         deliveryPartner.setAddress(createDeliveryPartnerDTO.getAddress());
         deliveryPartner.setLicenseNumber(createDeliveryPartnerDTO.getLicenseNumber());
         deliveryPartner.setProfilePicture(createDeliveryPartnerDTO.getProfilePicture());
-        deliveryPartner.setIsActive(createDeliveryPartnerDTO.getIsActive());
+        deliveryPartner.setIsActive(createDeliveryPartnerDTO.getIsActive() != null ? createDeliveryPartnerDTO.getIsActive() : true);
         deliveryPartner.setAvailabilityStatus(DeliveryPartner.AvailabilityStatus.AVAILABLE);
 
         // Generate temporary password and encode it
@@ -70,17 +72,18 @@ public class DeliveryPartnerService {
             emailService.sendDeliveryPartnerCredentials(
                     savedPartner.getEmail(),
                     savedPartner.getName(),
-                    tempPassword,  // Include the temporary password
+                    tempPassword,
                     vendor.getBusinessName()
             );
         } catch (Exception e) {
-            // Log the error but don't fail the operation
             System.err.println("Failed to send email to delivery partner: " + e.getMessage());
         }
 
         DeliveryPartnerDTO dto = convertToDTO(savedPartner);
-        dto.setTempPassword(tempPassword); // Return temp password in response
-        return dto;
+        Map<String, Object> response = new HashMap<>();
+        response.put("partner", dto);
+        response.put("tempPassword", tempPassword);
+        return response;
     }
 
     // Change Delivery Partner Password (for delivery partners themselves)
@@ -115,7 +118,7 @@ public class DeliveryPartnerService {
 
     // Reset password for delivery partner (Vendor operation)
     @Transactional
-    public String resetDeliveryPartnerPassword(Long partnerId, Long vendorId) {
+    public Map<String, Object> resetDeliveryPartnerPassword(Long partnerId, Long vendorId) {
         DeliveryPartner partner = deliveryPartnerRepository.findByPartnerIdAndVendorVendorId(partnerId, vendorId)
                 .orElseThrow(() -> new RuntimeException("Delivery partner not found or you don't have permission"));
 
@@ -123,19 +126,22 @@ public class DeliveryPartnerService {
         partner.setPassword(passwordEncoder.encode(newPassword));
         deliveryPartnerRepository.save(partner);
 
-        // Send email with new password to delivery partner (INCLUDING password)
+        // Send email with new password to delivery partner
         try {
             emailService.sendDeliveryPartnerCredentials(
                     partner.getEmail(),
                     partner.getName(),
-                    newPassword,  // Include the new temporary password
+                    newPassword,
                     partner.getVendor().getBusinessName()
             );
         } catch (Exception e) {
             System.err.println("Failed to send password reset email: " + e.getMessage());
         }
 
-        return "Password reset successfully. New password has been sent to the delivery partner's email.";
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Password reset successfully. New password has been sent to the delivery partner's email.");
+        response.put("tempPassword", newPassword);
+        return response;
     }
 
     public List<DeliveryPartnerDTO> getDeliveryPartnersByVendor(Long vendorId) {
@@ -209,11 +215,21 @@ public class DeliveryPartnerService {
     }
 
     @Transactional
-    public void toggleDeliveryPartnerAvailability(Long partnerId, Long vendorId) {
+    public DeliveryPartnerDTO toggleDeliveryPartnerAvailability(Long partnerId, Long vendorId) {
         DeliveryPartner partner = deliveryPartnerRepository.findByPartnerIdAndVendorVendorId(partnerId, vendorId)
                 .orElseThrow(() -> new RuntimeException("Delivery partner not found or you don't have permission to update it"));
+
         partner.setIsActive(!partner.getIsActive());
-        deliveryPartnerRepository.save(partner);
+
+        // If deactivating, set status to OFFLINE
+        if (!partner.getIsActive()) {
+            partner.setAvailabilityStatus(DeliveryPartner.AvailabilityStatus.OFFLINE);
+        } else {
+            partner.setAvailabilityStatus(DeliveryPartner.AvailabilityStatus.AVAILABLE);
+        }
+
+        DeliveryPartner updatedPartner = deliveryPartnerRepository.save(partner);
+        return convertToDTO(updatedPartner);
     }
 
     @Transactional
@@ -318,7 +334,7 @@ public class DeliveryPartnerService {
         dto.setLicenseNumber(partner.getLicenseNumber());
         dto.setProfilePicture(partner.getProfilePicture());
         dto.setIsActive(partner.getIsActive());
-        dto.setAvailabilityStatus(partner.getAvailabilityStatus().name()); // FIXED: Set availability status
+        dto.setAvailabilityStatus(partner.getAvailabilityStatus().name());
         dto.setVendorId(partner.getVendor().getVendorId());
         dto.setVendorName(partner.getVendor().getBusinessName());
         dto.setCreatedAt(partner.getCreatedAt());
